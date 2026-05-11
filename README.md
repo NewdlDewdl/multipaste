@@ -104,19 +104,66 @@ browser where you grab the new DMG (or run `brew upgrade --cask
 multipaste`). Atomic-swap auto-installs require a code-signing identity
 we don't have; this is the next-best, and you stay in control.
 
-## After install
+## After install — granting Accessibility access
 
-The first time you press the hotkey and pick an item, macOS will pop up the
-**Accessibility** consent dialog. Toggle Multipaste on:
+Auto-paste and snippet expansion need macOS Accessibility permission.
+Without it, **Multipaste still works** — picks land on your clipboard and
+you press ⌘V manually — but you give up the magic. Granting access is
+~30 seconds:
 
-> System Settings → Privacy & Security → Accessibility → ☑ Multipaste
+### From inside Multipaste (fastest)
 
-Once granted, every pick auto-pastes into the focused app — exactly like
-Win+V on Windows. Until then, picks still land on your clipboard and you can
-⌘V manually.
+When Multipaste needs Accessibility, the menu-bar icon dims and the menu
+shows a yellow banner at the top:
 
-The Welcome window can re-open Accessibility settings for you with one
-click. If you missed it, open it again via the menu-bar icon → Preferences…
+```
+⚠️  Grant Accessibility access…
+    Needed for auto-paste and snippets
+```
+
+Click it. Multipaste does three things for you:
+
+1. **Adds itself to the Accessibility list** automatically (via the
+   `AXIsProcessTrustedWithOptions` system call — this is the step that
+   pre-populates Multipaste in the toggle list so you don't have to
+   hunt for it with the `+` button).
+2. **Opens System Settings** straight to **Privacy & Security →
+   Accessibility**.
+3. **Shows a step-by-step alert** with the exact toggles to flip.
+
+Toggle Multipaste **on** in System Settings. macOS asks for Touch ID or
+your password. The moment access is granted, Multipaste pops up a
+"Granted!" confirmation, restarts the snippet engine, and the menu-bar
+icon brightens. No restart needed.
+
+### Manually (if Multipaste isn't running yet, or you want to do it yourself)
+
+1. **Apple menu → System Settings…**
+2. In the sidebar, click **Privacy & Security**.
+3. In the main pane, scroll down and click **Accessibility**.
+4. **If Multipaste is in the list** → flip the toggle to **on**, confirm
+   with Touch ID. Done.
+5. **If Multipaste is NOT in the list**:
+   - Click the **+** button below the list.
+   - In the file picker: **Applications** → **Multipaste**, then **Open**.
+   - Toggle the switch **on**.
+
+If Multipaste was running before you toggled, quit it (menu-bar 📋 → Quit)
+and relaunch from Applications so the new permission registers. (v1.4.0
+detects this automatically — no restart needed — but older versions don't.)
+
+### What's it actually for?
+
+- **Auto-paste** — synthesizes ⌘V into the focused app after you pick an
+  item from the picker. Without Accessibility, the system blocks any
+  process from posting keyboard events.
+- **Snippet expansion** — observes your typing system-wide, deletes the
+  trigger text, types the expansion. Both halves need Accessibility.
+
+That's it. Multipaste does not log keystrokes, does not exfiltrate, does
+not make network calls outside the once-a-day update check
+(`api.github.com/repos/NewdlDewdl/multipaste/releases/latest`). `grep -r
+URLSession Sources` is the audit.
 
 ---
 

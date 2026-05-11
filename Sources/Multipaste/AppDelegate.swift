@@ -31,14 +31,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self?.afterWelcomeDismissed()
     }
     private lazy var updateService = UpdateService(prefs: prefs)
+    private let permissionMonitor = PermissionMonitor()
     private lazy var menubar = MenuBarController(
         store: store,
         monitor: monitor,
         prefs: prefs,
+        initialAccessibilityGranted: Permissions.isTrustedForAccessibility,
         onShowPicker: { [weak self] in self?.picker.show() },
         onPasteItem:  { [weak self] item in self?.pickAndPaste(item) },
         onShowSettings: { [weak self] in self?.settings.show() },
         onCheckForUpdates: { [weak self] in self?.updateService.checkNow() },
+        onGrantAccessibility: { [weak self] in self?.walkThroughAccessibilityGrant() },
         onQuit:       { NSApp.terminate(nil) }
     )
 
@@ -62,6 +65,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // path is enough for v1.1.
         snippetEngine.start()
         updateService.start()
+
+        permissionMonitor.onChange = { [weak self] granted in
+            self?.handlePermissionChange(granted: granted)
+        }
+        permissionMonitor.start()
 
         // First-run experience: show Welcome window once. On subsequent
         // launches the menu bar icon + hotkey are enough.
@@ -89,6 +97,61 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func afterWelcomeDismissed() {
         // No-op for now — kept as a hook for future setup steps.
+    }
+
+    /// Called by `PermissionMonitor` whenever the Accessibility-trust
+    /// state flips. We use this to:
+    ///   - update the menu bar icon (banner row, dimmed icon)
+    ///   - re-start the snippet engine the moment access is granted
+    ///   - surface a quick toast so the user knows it worked
+    private func handlePermissionChange(granted: Bool) {
+        menubar.setAccessibilityGranted(granted)
+        if granted {
+            // Snippet engine's tap was a no-op before. Kick it back up.
+            snippetEngine.stop()
+            snippetEngine.start()
+            announceAccessibilityGranted()
+        }
+    }
+
+    private func announceAccessibilityGranted() {
+        let alert = NSAlert()
+        alert.messageText = "Accessibility access granted!"
+        alert.informativeText = """
+            Auto-paste and snippet expansion are now live.
+
+            Press \u{2318}\u{21E7}V to open the clipboard picker, or type a snippet trigger followed by space anywhere.
+            """
+        alert.addButton(withTitle: "Got it")
+        alert.runModal()
+    }
+
+    /// Triggered from the menu-bar banner. Combines:
+    ///   1. AXIsProcessTrustedWithOptions(prompt: true) — adds Multipaste
+    ///      to the Accessibility list so it's not "Where is it??"
+    ///   2. Deep-link to the Accessibility pane
+    ///   3. Step-by-step alert with the exact UI path
+    private func walkThroughAccessibilityGrant() {
+        Permissions.walkUserThroughAccessibilityGrant()
+        let alert = NSAlert()
+        alert.messageText = "Grant Accessibility access to Multipaste"
+        alert.informativeText = """
+            I just opened System Settings and added Multipaste to the Accessibility list.
+
+            Steps:
+              1. In the window that just appeared (System Settings → Privacy & Security → Accessibility), find Multipaste in the list.
+              2. Flip the toggle next to it to ON.
+              3. macOS will ask for Touch ID or your password — confirm.
+
+            That's it. The menu-bar icon will brighten and a confirmation will appear here the moment access is granted.
+
+            Why this is needed: auto-paste (synthesizing \u{2318}V into the focused app) and snippet expansion (replacing your trigger text) both require Accessibility. Without it, picks still land on your clipboard and you can \u{2318}V manually.
+            """
+        alert.addButton(withTitle: "OK")
+        alert.addButton(withTitle: "Open Settings Again")
+        if alert.runModal() == .alertSecondButtonReturn {
+            Permissions.walkUserThroughAccessibilityGrant()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {

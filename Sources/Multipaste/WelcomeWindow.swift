@@ -206,11 +206,7 @@ final class WelcomeWindow: NSObject, NSWindowDelegate {
     // MARK: - Actions
 
     @objc private func openAccessibility() {
-        // Trigger the system prompt + deep-link System Settings.
-        Permissions.promptForAccessibility()
-        if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
-            NSWorkspace.shared.open(url)
-        }
+        Permissions.walkUserThroughAccessibilityGrant()
         // Refresh summary after a beat so user sees state update on return.
         DispatchQueue.main.asyncAfter(deadline: .now() + .seconds(1)) { [weak self] in
             self?.refreshSummaries()

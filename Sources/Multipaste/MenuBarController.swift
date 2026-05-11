@@ -13,41 +13,71 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onPasteItem: (ClipboardItem) -> Void
     private let onShowSettings: () -> Void
     private let onCheckForUpdates: () -> Void
+    private let onGrantAccessibility: () -> Void
     private let onQuit: () -> Void
+
+    /// Set by AppDelegate via `setAccessibilityState(_:)` whenever the
+    /// `PermissionMonitor` observes a change. Drives whether the menu
+    /// shows the "Grant Access" banner and dims the status icon.
+    private var accessibilityGranted: Bool
 
     init(store: HistoryStore,
          monitor: ClipboardMonitor,
          prefs: Preferences,
+         initialAccessibilityGranted: Bool,
          onShowPicker: @escaping () -> Void,
          onPasteItem: @escaping (ClipboardItem) -> Void,
          onShowSettings: @escaping () -> Void,
          onCheckForUpdates: @escaping () -> Void,
+         onGrantAccessibility: @escaping () -> Void,
          onQuit: @escaping () -> Void) {
         self.store = store
         self.monitor = monitor
         self.prefs = prefs
+        self.accessibilityGranted = initialAccessibilityGranted
         self.onShowPicker = onShowPicker
         self.onPasteItem = onPasteItem
         self.onShowSettings = onShowSettings
         self.onCheckForUpdates = onCheckForUpdates
+        self.onGrantAccessibility = onGrantAccessibility
         self.onQuit = onQuit
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
 
-        if let button = statusItem.button {
-            if let image = NSImage(systemSymbolName: "doc.on.clipboard", accessibilityDescription: "Multipaste") {
-                image.isTemplate = true
-                button.image = image
-            } else {
-                button.title = "📋"
-            }
-            button.toolTip = "Multipaste — clipboard history (\(hotkeyDisplay))"
-        }
+        refreshStatusButton()
 
         let menu = NSMenu()
         menu.delegate = self
         rebuild(menu)
         statusItem.menu = menu
+    }
+
+    /// Reapply the status-item icon + tooltip in response to a state
+    /// change (currently just the Accessibility-granted bit).
+    private func refreshStatusButton() {
+        guard let button = statusItem.button else { return }
+        if let image = NSImage(systemSymbolName: "doc.on.clipboard",
+                               accessibilityDescription: "Multipaste") {
+            image.isTemplate = true
+            button.image = image
+        } else {
+            button.title = "📋"
+        }
+        // Dim the icon when Accessibility is missing — a subtle "needs
+        // attention" signal that survives light/dark mode and won't be
+        // mistaken for an outage.
+        button.appearsDisabled = !accessibilityGranted
+        button.toolTip = accessibilityGranted
+            ? "Multipaste — clipboard history (\(hotkeyDisplay))"
+            : "Multipaste — Accessibility access not granted yet. Click for setup."
+    }
+
+    /// Update the menu in place when the OS reports a permission change.
+    func setAccessibilityGranted(_ granted: Bool) {
+        guard granted != accessibilityGranted else { return }
+        accessibilityGranted = granted
+        refreshStatusButton()
+        if let m = statusItem.menu { rebuild(m) }
     }
 
     private var hotkeyDisplay: String {
@@ -71,6 +101,23 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     private func rebuild(_ menu: NSMenu) {
         menu.removeAllItems()
+
+        // Top "Grant Accessibility" banner — only present when missing.
+        if !accessibilityGranted {
+            let banner = NSMenuItem(title: "\u{26A0}\u{FE0F}  Grant Accessibility access\u{2026}",
+                                    action: #selector(handleGrantAccessibility),
+                                    keyEquivalent: "")
+            banner.target = self
+            banner.toolTip = "Auto-paste and snippet expansion need this. Click for step-by-step."
+            menu.addItem(banner)
+
+            let why = NSMenuItem(title: "  Needed for auto-paste and snippets",
+                                  action: nil, keyEquivalent: "")
+            why.isEnabled = false
+            menu.addItem(why)
+
+            menu.addItem(NSMenuItem.separator())
+        }
 
         let open = NSMenuItem(title: "Show Clipboard History  \(hotkeyDisplay)",
                               action: #selector(handleShow),
@@ -156,13 +203,14 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     // MARK: - Actions
 
-    @objc private func handleShow()             { onShowPicker() }
-    @objc private func handlePause()            { monitor.paused.toggle() }
-    @objc private func handleClear()            { store.clear() }
-    @objc private func handleClearAll()         { store.clearAll() }
-    @objc private func handleShowSettings()     { onShowSettings() }
-    @objc private func handleCheckForUpdates()  { onCheckForUpdates() }
-    @objc private func handleQuit()             { onQuit() }
+    @objc private func handleShow()               { onShowPicker() }
+    @objc private func handlePause()              { monitor.paused.toggle() }
+    @objc private func handleClear()              { store.clear() }
+    @objc private func handleClearAll()           { store.clearAll() }
+    @objc private func handleShowSettings()       { onShowSettings() }
+    @objc private func handleCheckForUpdates()    { onCheckForUpdates() }
+    @objc private func handleGrantAccessibility() { onGrantAccessibility() }
+    @objc private func handleQuit()               { onQuit() }
 
     @objc private func handleOpenFolder() {
         let url = AppPaths.dataDirectory

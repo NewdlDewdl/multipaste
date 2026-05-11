@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.4.0 — 2026-05-11
+
+Granting Accessibility is no longer a side quest.
+
+- **In-menu "Grant Accessibility access…" banner** appears at the top
+  of the menu whenever the OS reports the trust bit as `false`. Click
+  it and Multipaste auto-adds itself to the Accessibility list, opens
+  System Settings to the right pane, and shows step-by-step instructions
+  in an alert.
+- **Status-bar icon dims** when Accessibility is missing. Subtle "needs
+  attention" cue that works in both light and dark mode.
+- **PermissionMonitor** polls `AXIsProcessTrusted()` every 2 seconds.
+  When access is granted (or revoked), the menu rebuilds, the icon
+  un-dims, and a "Granted!" confirmation pops up. The SnippetEngine
+  restarts automatically — no quit/relaunch needed.
+- **Permissions.walkUserThroughAccessibilityGrant()** consolidates the
+  prompt + deep-link + alert flow into one call. The Welcome window now
+  uses it too, so every Grant Access entry point behaves identically.
+- README adds a full "Granting Accessibility access" section with both
+  in-app and manual walkthroughs, plus a clear explanation of what each
+  permission is actually used for.
+
 ## 1.3.0 — 2026-05-11
 
 You never have to wonder "am I on the latest?" again.
