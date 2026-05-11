@@ -147,8 +147,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let task = Process()
             task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
             task.arguments = args
-            task.standardOutput = Pipe()
-            task.standardError = Pipe()
+            // /dev/null over Pipe() — no risk of a chatty future
+            // launchctl filling an unread pipe.
+            task.standardOutput = FileHandle.nullDevice
+            task.standardError = FileHandle.nullDevice
             do { try task.run(); task.waitUntilExit() } catch {}
         }
         try? FileManager.default.removeItem(atPath: plistPath)

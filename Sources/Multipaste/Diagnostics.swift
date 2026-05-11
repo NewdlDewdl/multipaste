@@ -196,10 +196,34 @@ enum Diagnostics {
         task.arguments = ["-Ao", "pid,command"]
         let out = Pipe()
         task.standardOutput = out
-        try? task.run()
+        task.standardError = Pipe()
+
+        // ASYNC DRAIN before waitUntilExit. Without this, /bin/ps output
+        // exceeding the kernel pipe buffer (~64 KB on macOS) deadlocks
+        // the caller: ps blocks writing into a full pipe, we block
+        // waiting for ps to exit. Same fix that was applied to
+        // SingleInstance.enforce() in 1.6.1; missed here until 1.7.2.
+        // Hitting Diagnostics… in 1.7.0/1.7.1 hung the main thread
+        // because this is invoked from a menu action.
+        var collected = Data()
+        let group = DispatchGroup()
+        group.enter()
+        out.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            if chunk.isEmpty {
+                handle.readabilityHandler = nil
+                group.leave()
+            } else {
+                collected.append(chunk)
+            }
+        }
+        do { try task.run() } catch {
+            out.fileHandleForReading.readabilityHandler = nil
+            return []
+        }
         task.waitUntilExit()
-        let data = out.fileHandleForReading.readDataToEndOfFile()
-        let text = String(data: data, encoding: .utf8) ?? ""
+        _ = group.wait(timeout: .now() + .seconds(3))
+        let text = String(data: collected, encoding: .utf8) ?? ""
         let myPid = ProcessInfo.processInfo.processIdentifier
         var result: [Int32] = []
         for line in text.split(separator: "\n") {

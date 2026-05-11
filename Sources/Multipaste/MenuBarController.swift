@@ -258,24 +258,34 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func handleResetAccessibility()   { resetAccessibilityWithConfirm() }
 
     private func showDiagnostics() {
-        let snapshot = Diagnostics.snapshot()
-        let text = Diagnostics.summary(snapshot)
-        let alert = NSAlert()
-        alert.messageText = "Multipaste diagnostics"
-        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 540, height: 280))
-        let tv = NSTextView(frame: NSRect(x: 0, y: 0, width: 540, height: 280))
-        tv.isEditable = false
-        tv.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
-        tv.string = text
-        scroll.documentView = tv
-        scroll.hasVerticalScroller = true
-        scroll.borderType = .bezelBorder
-        alert.accessoryView = scroll
-        alert.addButton(withTitle: "Copy to Clipboard")
-        alert.addButton(withTitle: "Close")
-        if alert.runModal() == .alertFirstButtonReturn {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
+        // `Diagnostics.snapshot()` spawns `codesign` and `ps`
+        // subprocesses. Running them synchronously on the main thread
+        // froze the UI (and looked like a crash to the user in 1.7.0/
+        // 1.7.1). Compute the snapshot on a background queue, then
+        // present the alert on main. This also lets us show a temporary
+        // "computing…" placeholder if the snapshot is slow.
+        DispatchQueue.global(qos: .userInitiated).async {
+            let snapshot = Diagnostics.snapshot()
+            let text = Diagnostics.summary(snapshot)
+            DispatchQueue.main.async {
+                let alert = NSAlert()
+                alert.messageText = "Multipaste diagnostics"
+                let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 540, height: 280))
+                let tv = NSTextView(frame: NSRect(x: 0, y: 0, width: 540, height: 280))
+                tv.isEditable = false
+                tv.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+                tv.string = text
+                scroll.documentView = tv
+                scroll.hasVerticalScroller = true
+                scroll.borderType = .bezelBorder
+                alert.accessoryView = scroll
+                alert.addButton(withTitle: "Copy to Clipboard")
+                alert.addButton(withTitle: "Close")
+                if alert.runModal() == .alertFirstButtonReturn {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(text, forType: .string)
+                }
+            }
         }
     }
 

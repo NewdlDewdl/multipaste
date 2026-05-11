@@ -1,5 +1,51 @@
 # Changelog
 
+## 1.7.2 — 2026-05-11
+
+Hotfix: clicking Diagnostics… hung the app. This is the **third**
+occurrence of the same `Process()` pipe-drain bug, finally rooted out
+across the codebase.
+
+### What was wrong
+
+`Diagnostics.siblingMultipasteProcesses()` ran `/bin/ps -Ao pid,command`
+with the naive `task.waitUntilExit()` + `readDataToEndOfFile()` pattern.
+On a busy Mac that produces well over 64 KB of output (the kernel pipe
+buffer size) — measured 176,664 bytes on the test machine. `ps` blocks
+writing into the full pipe, we block waiting for `ps` to exit, main
+thread freezes, the UI looks crashed.
+
+The fix from 1.6.1 (async `readabilityHandler` before `waitUntilExit`)
+was already applied to `SingleInstance.enforce()` and
+`Diagnostics.readCodesign()`. The `siblingMultipasteProcesses()` helper
+was missed.
+
+### Also fixed: synchronous subprocess call from main thread
+
+Even after the deadlock fix, `MenuBarController.showDiagnostics()` was
+spawning `codesign` + `ps` from the main thread before presenting the
+alert. On a slow system that meant a few hundred milliseconds of
+beachball before the dialog appeared. Now `Diagnostics.snapshot()` runs
+on a background `userInitiated` queue and the alert presents on main
+once the snapshot is ready. UI stays responsive the entire time.
+
+### Verification
+
+A probe with the new async-drain pattern processed 176 KB of `ps`
+output in **66 ms**. The previous code would have deadlocked at byte
+~65,536 — every time, on any reasonably loaded macOS system.
+
+### Permanent guard
+
+Three independent occurrences of the same bug in one codebase is a
+signal. Any future `Process()` invocation that pipes stdout/stderr
+should either:
+  - Use `readabilityHandler` + `DispatchGroup` to drain async, OR
+  - Have a comment explaining why the output is bounded < 64 KB.
+
+Audit grep: `git grep -n 'waitUntilExit\|readDataToEndOfFile' Sources/`
+should return zero hits not paired with an async-drain pattern.
+
 ## 1.7.1 — 2026-05-11
 
 Fixes the "picked an item, hit Enter, nothing pasted, had to ⌘V manually"

@@ -24,6 +24,13 @@ enum Permissions {
     /// after an update changed the cdhash and TCC indexes by cdhash).
     /// Uses `/usr/bin/tccutil` rather than the Homebrew Python wrapper,
     /// which is broken on Python 3.14.
+    ///
+    /// Output is drained via `readabilityHandler` rather than the naive
+    /// `waitUntilExit` + `readDataToEndOfFile` sequence. tccutil's
+    /// output is short in practice (one or two lines) so the bug would
+    /// never trip — but the pattern was the same shape as three other
+    /// occurrences of the deadlock bug in this codebase, so we use the
+    /// safe pattern everywhere as a matter of discipline.
     @discardableResult
     static func resetAccessibilityPermission() -> String? {
         let task = Process()
@@ -32,15 +39,29 @@ enum Permissions {
         let pipe = Pipe()
         task.standardOutput = pipe
         task.standardError = pipe
+
+        var collected = Data()
+        let group = DispatchGroup()
+        group.enter()
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            if chunk.isEmpty {
+                handle.readabilityHandler = nil
+                group.leave()
+            } else {
+                collected.append(chunk)
+            }
+        }
         do {
             try task.run()
-            task.waitUntilExit()
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            let out = String(data: data, encoding: .utf8) ?? ""
-            return task.terminationStatus == 0 ? nil : out
         } catch {
+            pipe.fileHandleForReading.readabilityHandler = nil
             return error.localizedDescription
         }
+        task.waitUntilExit()
+        _ = group.wait(timeout: .now() + .seconds(3))
+        let out = String(data: collected, encoding: .utf8) ?? ""
+        return task.terminationStatus == 0 ? nil : out
     }
 
     /// One-call helper: trigger the system add-to-list prompt AND open

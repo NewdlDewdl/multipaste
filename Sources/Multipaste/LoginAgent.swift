@@ -19,8 +19,12 @@ enum LoginAgent {
         // Discard stdout/stderr; we don't surface launchctl errors here
         // (the most common failure is "no such service" if the user hasn't
         // installed via install.sh — fine, they'll never see this UI).
-        task.standardOutput = Pipe()
-        task.standardError = Pipe()
+        // launchctl enable/disable produce a single line at most. Route
+        // straight to /dev/null instead of a Pipe() we never drain —
+        // safer than the previous "unread pipe" pattern, which can fill
+        // if launchctl ever decides to be chatty in a future macOS.
+        task.standardOutput = FileHandle.nullDevice
+        task.standardError = FileHandle.nullDevice
         do { try task.run(); task.waitUntilExit() } catch { /* best effort */ }
     }
 }
