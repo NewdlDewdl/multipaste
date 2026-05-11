@@ -1,5 +1,48 @@
 # Changelog
 
+## 1.7.1 — 2026-05-11
+
+Fixes the "picked an item, hit Enter, nothing pasted, had to ⌘V manually"
+bug — present since the picker shipped in 1.0.0.
+
+### What was wrong
+
+The picker calls `NSApp.activate(ignoringOtherApps: true)` so its search
+field receives keystrokes. But on dismiss we never returned focus to the
+app the user was previously in. By the time we synthesized ⌘V (after a
+fixed 80 ms delay), Multipaste was *still* the frontmost app — so the
+keystroke landed in Multipaste's own event queue and disappeared.
+
+### The fix
+
+Standard pattern from every working menu-bar app:
+
+1. **Capture the previously-frontmost app** in `PickerWindow.show()` —
+   crucially, *before* the `NSApp.activate` call that makes Multipaste
+   itself frontmost.
+2. **On pick** (Enter or ⌘1-9), `commitItem(_:)` snapshots that target
+   and passes it back through the `onPick` callback alongside the item.
+3. **In `AppDelegate.pickAndPaste`**, call
+   `previousApp.activate(options: [])` to return focus to the original
+   app.
+4. **Poll `NSWorkspace.frontmostApplication` every 20 ms** (up to
+   500 ms) until it matches `previousApp`, instead of waiting a fixed
+   delay. Focus-switching is asynchronous — the actual time varies from
+   ~30 ms on idle systems to ~250 ms under load. A fixed 80 ms delay
+   was simultaneously too short on busy systems and unnecessarily long
+   on idle ones. The new approach paces itself.
+5. **Once focus has actually returned**, synthesize ⌘V via
+   `CGEvent.post`.
+
+Every transition is logged to `~/Library/Logs/Multipaste/multipaste.log`
+(`pickAndPaste: reactivating com.apple.TextEdit pid=…`, then
+`pickAndPaste: focus restored, synthesizing ⌘V`) so you can verify the
+fix worked on your machine.
+
+If focus polling times out (target app dead, screensaver, etc.), we
+synthesize ⌘V anyway and log `focus restore TIMED OUT` — the user still
+gets *some* paste rather than silent failure.
+
 ## 1.7.0 — 2026-05-11
 
 Copying a file now does the right thing in *both* text and file-accepting

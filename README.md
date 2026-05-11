@@ -13,7 +13,7 @@ No subscriptions, no Electron, no telemetry, no account. ~700 KB of
 native Swift in a 440 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
 starts at login.
 
-**Latest release:** [v1.7.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+**Latest release:** [v1.7.1](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 69 unit tests
 &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
@@ -23,7 +23,7 @@ starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-1.7.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-1.7.1.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (~420 KB).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose

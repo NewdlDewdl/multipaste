@@ -10,8 +10,18 @@ final class PickerWindow: NSObject, NSWindowDelegate,
                           NSSearchFieldDelegate {
 
     private let store: HistoryStore
-    private let onPick: (ClipboardItem) -> Void
+    private let onPick: (ClipboardItem, NSRunningApplication?) -> Void
     private let onEditTrigger: (ClipboardItem) -> Void
+
+    /// The app that was frontmost when the picker opened. We re-activate
+    /// it before pasting so the synthesized ⌘V lands in *that* app rather
+    /// than in Multipaste itself. macOS routes synthesized key events to
+    /// whatever's currently frontmost; if the picker's dismissal hadn't
+    /// finished switching focus back by the time we posted ⌘V, the
+    /// keystroke disappeared into Multipaste's own event queue. v1.7.0
+    /// and earlier had this bug — picks landed on the clipboard but
+    /// didn't auto-paste; users had to ⌘V manually after.
+    private var previouslyActiveApp: NSRunningApplication?
 
     private let panel: NSPanel
     private let searchField: NSSearchField
@@ -25,7 +35,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private var keyMonitor: Any?
 
     init(store: HistoryStore,
-         onPick: @escaping (ClipboardItem) -> Void,
+         onPick: @escaping (ClipboardItem, NSRunningApplication?) -> Void,
          onEditTrigger: @escaping (ClipboardItem) -> Void) {
         self.store = store
         self.onPick = onPick
@@ -133,8 +143,17 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     // MARK: - Public
 
     /// Display the picker. Positions on the active screen and pre-selects
-    /// the most-recent item.
+    /// the most-recent item. Captures the previously-active app FIRST so
+    /// we can return focus to it on pick.
     func show() {
+        // Capture this BEFORE NSApp.activate — once we activate ourselves,
+        // frontmostApplication becomes us.
+        let mePID = ProcessInfo.processInfo.processIdentifier
+        let front = NSWorkspace.shared.frontmostApplication
+        if let f = front, f.processIdentifier != mePID {
+            previouslyActiveApp = f
+        }
+
         // Reset query each invocation — surprising otherwise
         query = ""
         searchField.stringValue = ""
@@ -213,9 +232,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         if isCmd, let digit = Int(chars), digit >= 1 && digit <= 9 {
             let idx = digit - 1
             if idx < filtered.count {
-                let item = filtered[idx]
-                hide()
-                onPick(item)
+                commitItem(filtered[idx])
             }
             return true
         }
@@ -240,8 +257,17 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         let row = tableView.selectedRow
         guard row >= 0 && row < filtered.count else { return }
         let item = filtered[row]
+        commitItem(item)
+    }
+
+    /// Common path for return-on-selection AND ⌘1-9 quick pick: hide
+    /// panel, snapshot the target app, fire onPick with it. The AppDelegate
+    /// is responsible for re-activating the app and polling for focus
+    /// before synthesizing ⌘V.
+    private func commitItem(_ item: ClipboardItem) {
+        let target = previouslyActiveApp
         hide()
-        onPick(item)
+        onPick(item, target)
     }
 
     private func moveSelection(by delta: Int) {

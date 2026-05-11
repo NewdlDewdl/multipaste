@@ -11,11 +11,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var monitor = ClipboardMonitor(store: store, prefs: prefs)
     private let hotKeyManager = HotKeyManager()
     private lazy var snippetEngine = SnippetEngine(store: store)
-    private lazy var picker = PickerWindow(store: store, onPick: { [weak self] item in
-        self?.pickAndPaste(item)
-    }, onEditTrigger: { [weak self] item in
-        self?.promptForTrigger(item: item)
-    })
+    private lazy var picker = PickerWindow(
+        store: store,
+        onPick: { [weak self] item, previousApp in
+            self?.pickAndPaste(item, previousApp: previousApp)
+        },
+        onEditTrigger: { [weak self] item in
+            self?.promptForTrigger(item: item)
+        }
+    )
     private lazy var settings = SettingsWindowController(
         prefs: prefs,
         store: store,
@@ -38,7 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         prefs: prefs,
         initialAccessibilityGranted: Permissions.isTrustedForAccessibility,
         onShowPicker: { [weak self] in self?.picker.show() },
-        onPasteItem:  { [weak self] item in self?.pickAndPaste(item) },
+        onPasteItem:  { [weak self] item in self?.pickAndPaste(item, previousApp: nil) },
         onShowSettings: { [weak self] in self?.settings.show() },
         onCheckForUpdates: { [weak self] in self?.updateService.checkNow() },
         onGrantAccessibility: { [weak self] in self?.walkThroughAccessibilityGrant() },
@@ -284,19 +288,80 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Pasteboard-set + (optionally) synthesize ⌘V into whatever app
     /// had focus before the picker opened.
-    private func pickAndPaste(_ item: ClipboardItem) {
+    ///
+    /// The flow:
+    ///  1. Write the item to the pasteboard.
+    ///  2. Reactivate `previousApp` so focus returns to where it was
+    ///     before the picker stole it.
+    ///  3. Poll `NSWorkspace.frontmostApplication` every 20 ms (up to
+    ///     500 ms) until it actually matches `previousApp`. We can't
+    ///     just sleep a fixed delay — focus switching is asynchronous
+    ///     and the time varies from ~30 ms to ~250 ms depending on
+    ///     load. The fixed 80 ms delay v1.7.0 used was the wrong
+    ///     pattern: too short on a busy machine, too long when fast.
+    ///  4. Once focus has actually returned, synthesize ⌘V.
+    ///
+    /// If `previousApp` is nil (e.g. menu-bar quick-pick), skip the
+    /// reactivation step — Multipaste's menu has already returned focus
+    /// to the previous app on dismiss.
+    private func pickAndPaste(_ item: ClipboardItem, previousApp: NSRunningApplication?) {
         Paster.put(item)
-        guard prefs.pasteOnSelect else { return }
-
-        if Permissions.isTrustedForAccessibility {
-            // Give the focused app a beat to regain key-window status.
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(80)) {
-                Paster.simulateCommandV()
-            }
-        } else {
-            // Show a one-time prompt and skip paste — the user still has
-            // the item on their clipboard and can ⌘V manually.
-            Permissions.promptForAccessibility()
+        guard prefs.pasteOnSelect else {
+            Diagnostics.log("pickAndPaste: pasteOnSelect=off, item on clipboard only")
+            return
         }
+        guard Permissions.isTrustedForAccessibility else {
+            Diagnostics.log("pickAndPaste: Accessibility not granted, item on clipboard only")
+            Permissions.promptForAccessibility()
+            return
+        }
+
+        if let target = previousApp {
+            target.activate(options: [])
+            Diagnostics.log("pickAndPaste: reactivating \(target.bundleIdentifier ?? "?") pid=\(target.processIdentifier)")
+        }
+
+        waitForFocus(of: previousApp, timeout: 0.5) { resolved in
+            if resolved {
+                Diagnostics.log("pickAndPaste: focus restored, synthesizing ⌘V")
+            } else {
+                Diagnostics.log("pickAndPaste: focus restore TIMED OUT, synthesizing ⌘V anyway")
+            }
+            Paster.simulateCommandV()
+        }
+    }
+
+    /// Poll `NSWorkspace.frontmostApplication` every 20 ms until it
+    /// matches `target`, or until `timeout` seconds elapse. Calls
+    /// `completion` on the main queue with `resolved: true` when the
+    /// target became frontmost, or `resolved: false` on timeout.
+    ///
+    /// If `target` is nil, fires `completion(true)` after a single
+    /// 50 ms grace period — gives the menu a beat to finish dismissing.
+    private func waitForFocus(of target: NSRunningApplication?,
+                              timeout: TimeInterval,
+                              completion: @escaping (_ resolved: Bool) -> Void) {
+        if target == nil {
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50)) {
+                completion(true)
+            }
+            return
+        }
+        let start = Date()
+        func tick() {
+            if let target = target,
+               NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier {
+                completion(true)
+                return
+            }
+            if Date().timeIntervalSince(start) >= timeout {
+                completion(false)
+                return
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(20)) {
+                tick()
+            }
+        }
+        tick()
     }
 }
