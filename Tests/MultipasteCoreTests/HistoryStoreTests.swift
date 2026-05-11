@@ -21,6 +21,9 @@ enum HistoryStoreTests {
         TestRegistry.register("HistoryStore/setTriggerToNilLeavesPinIntact", setTriggerToNilLeavesPinIntact)
         TestRegistry.register("HistoryStore/triggerIsPersisted", triggerIsPersisted)
         TestRegistry.register("HistoryStore/snippetsReturnsOnlyTriggered", snippetsReturnsOnlyTriggered)
+        TestRegistry.register("HistoryStore/sortedForDisplayPinnedFirstFalse", sortedForDisplayPinnedFirstFalse)
+        TestRegistry.register("HistoryStore/sortedForDisplayPinnedFirstTrue", sortedForDisplayPinnedFirstTrue)
+        TestRegistry.register("HistoryStore/sortedForDisplayPreservesRelativeOrderWithinGroups", sortedForDisplayPreservesRelativeOrderWithinGroups)
     }
 
     private static func makeStore(max: Int = 50) -> (HistoryStore, URL) {
@@ -201,6 +204,44 @@ enum HistoryStoreTests {
         let snippets = store.snippets
         try expectEqual(snippets.count, 1)
         try expectEqual(snippets[0].trigger, ";sig")
+    }
+
+    static func sortedForDisplayPinnedFirstFalse() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("a"))
+        store.insert(.text("b"))
+        store.insert(.text("c"))
+        store.togglePin(id: store.items[2].id) // pin "a"
+        // pinnedFirst=false → recency order, unchanged: [c, b, a]
+        let r = store.sortedForDisplay(pinnedFirst: false).map(\.preview)
+        try expectEqual(r, ["c", "b", "a"])
+    }
+
+    static func sortedForDisplayPinnedFirstTrue() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("a"))
+        store.insert(.text("b"))
+        store.insert(.text("c"))
+        store.togglePin(id: store.items[2].id) // pin "a" (oldest, currently last)
+        // pinnedFirst=true → pinned items hoisted to top in their original
+        // relative order: [a, c, b]
+        let r = store.sortedForDisplay(pinnedFirst: true).map(\.preview)
+        try expectEqual(r, ["a", "c", "b"])
+    }
+
+    static func sortedForDisplayPreservesRelativeOrderWithinGroups() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("u1"))
+        store.insert(.text("u2"))
+        store.insert(.text("p1"))
+        store.insert(.text("u3"))
+        store.insert(.text("p2"))
+        store.togglePin(id: store.items[0].id) // pin "p2" (newest)
+        store.togglePin(id: store.items[2].id) // pin "p1"
+        // Recency order: [p2, u3, p1, u2, u1]; pinned=[p2,p1], unpinned=[u3,u2,u1]
+        // sortedForDisplay(pinnedFirst: true) = [p2, p1, u3, u2, u1]
+        let r = store.sortedForDisplay(pinnedFirst: true).map(\.preview)
+        try expectEqual(r, ["p2", "p1", "u3", "u2", "u1"])
     }
 
     static func insertNotifiesObservers() throws {

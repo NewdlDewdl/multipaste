@@ -1,5 +1,47 @@
 # Changelog
 
+## 1.9.0 — 2026-05-11
+
+Makes pinning visible. Same semantics — different feel.
+
+### What pinning has always done
+
+Three concrete behaviors, none of which 1.0–1.8 communicated well:
+
+1. **Pinned items survive history eviction.** The 200-item cap drops
+   unpinned entries only; pinned items stay forever.
+2. **Pinned items survive "Clear History (Keep Pinned)."**
+3. **Snippet expansion requires pinning** — a trigger only fires if
+   the item is pinned. Setting a trigger auto-pins.
+
+### Why it didn't *feel* like anything was happening
+
+Pre-1.9.0 the only visual cue was a small 📌 emoji at the right edge
+of the cell. The row's color didn't change, the order didn't change,
+and nothing else moved. Users pressed ⌘P and saw essentially nothing,
+leading to "what was pin supposed to do?"
+
+### What 1.9.0 changes
+
+- **Pinned rows now look pinned.** A 3 px yellow accent stripe down
+  the left edge of the row, plus a 10%-opacity yellow background tint
+  on the whole row. The previously-small 📌 emoji becomes a bold
+  yellow `📌 PINNED` badge that you can read from across the room.
+- **Inline action toast in the hint bar.** Press ⌘P and the bottom
+  hint line briefly displays "📌 Pinned — survives history eviction
+  and snippet expansion" for 1.6 seconds before restoring. Same for
+  Unpin and Delete. Immediate "yes, that did something" feedback.
+- **New Preferences toggle: "Show pinned items at the top of the
+  picker."** Default off (recency order preserved). When on, pinned
+  items are hoisted above unpinned ones, preserving relative recency
+  within each group. Use it to make pinned items a "permanent shelf."
+- New `MultipasteCore/HistoryStore.sortedForDisplay(pinnedFirst:)`
+  pure helper. Stable sort, easily testable.
+- 5 new unit tests: `sortedForDisplay` with pinned-first on/off,
+  preserves relative order within groups, plus two for the new
+  Preferences flag (default false + persistence).
+- Test count: **83** (was 78).
+
 ## 1.8.0 — 2026-05-11
 
 ### Tab / Shift+Tab focus traversal in the picker

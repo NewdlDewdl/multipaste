@@ -10,6 +10,8 @@ enum PreferencesTests {
         TestRegistry.register("Preferences/maxHistoryClampedToReasonableRange", maxHistoryClampedToReasonableRange)
         TestRegistry.register("Preferences/hasCompletedFirstRunDefaultsFalse", hasCompletedFirstRunDefaultsFalse)
         TestRegistry.register("Preferences/hasCompletedFirstRunPersists", hasCompletedFirstRunPersists)
+        TestRegistry.register("Preferences/pinnedItemsFirstDefaultsFalse", pinnedItemsFirstDefaultsFalse)
+        TestRegistry.register("Preferences/pinnedItemsFirstPersists", pinnedItemsFirstPersists)
     }
 
     private static func freshDefaults() -> UserDefaults {
@@ -67,5 +69,19 @@ enum PreferencesTests {
         p1.hasCompletedFirstRun = true
         let p2 = Preferences(defaults: d)
         try expect(p2.hasCompletedFirstRun)
+    }
+
+    static func pinnedItemsFirstDefaultsFalse() throws {
+        let p = Preferences(defaults: freshDefaults())
+        try expect(!p.pinnedItemsFirst,
+                   "default is recency order; pinned-first is opt-in")
+    }
+
+    static func pinnedItemsFirstPersists() throws {
+        let d = freshDefaults()
+        let p1 = Preferences(defaults: d)
+        p1.pinnedItemsFirst = true
+        let p2 = Preferences(defaults: d)
+        try expect(p2.pinnedItemsFirst)
     }
 }

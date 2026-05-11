@@ -86,6 +86,16 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: Keys.augmentFileCopiesWithPath) }
     }
 
+    /// When true, the picker hoists pinned items above unpinned ones
+    /// (preserving relative recency within each group). Default off —
+    /// recency-order is what most clipboard managers do and most users
+    /// expect. Opt-in for power users who treat the pinned section as a
+    /// permanent "snippets shelf."
+    public var pinnedItemsFirst: Bool {
+        get { defaults.bool(forKey: Keys.pinnedItemsFirst) }
+        set { defaults.set(newValue, forKey: Keys.pinnedItemsFirst) }
+    }
+
     public var hotkey: Hotkey {
         get {
             Hotkey(
@@ -107,5 +117,6 @@ public final class Preferences {
         static let hotkeyModifiers          = "hotkey.modifiers"
         static let hasCompletedFirstRun     = "hasCompletedFirstRun"
         static let augmentFileCopiesWithPath = "augmentFileCopiesWithPath"
+        static let pinnedItemsFirst         = "pinnedItemsFirst"
     }
 }

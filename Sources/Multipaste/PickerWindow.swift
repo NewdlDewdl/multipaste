@@ -10,6 +10,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
                           NSSearchFieldDelegate {
 
     private let store: HistoryStore
+    private let prefs: Preferences
     private let onPick: (ClipboardItem, NSRunningApplication?) -> Void
     private let onEditTrigger: (ClipboardItem) -> Void
 
@@ -35,9 +36,11 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private var keyMonitor: Any?
 
     init(store: HistoryStore,
+         prefs: Preferences,
          onPick: @escaping (ClipboardItem, NSRunningApplication?) -> Void,
          onEditTrigger: @escaping (ClipboardItem) -> Void) {
         self.store = store
+        self.prefs = prefs
         self.onPick = onPick
         self.onEditTrigger = onEditTrigger
 
@@ -86,13 +89,16 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.borderType = .noBorder
 
-        hintLabel = NSTextField(labelWithString: "↑↓/Tab select   ↩ paste   ⌘1–9 quick-pick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close")
+        hintLabel = NSTextField(labelWithString: "")
         hintLabel.font = .systemFont(ofSize: 11, weight: .regular)
         hintLabel.textColor = .secondaryLabelColor
         hintLabel.alignment = .center
         hintLabel.translatesAutoresizingMaskIntoConstraints = false
 
         super.init()
+
+        // Set initial hint text now that `self` is available.
+        hintLabel.stringValue = defaultHintText
 
         searchField.delegate = self
         tableView.dataSource = self
@@ -186,12 +192,29 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     }
 
     private func reload() {
-        filtered = store.search(query)
+        filtered = store.search(query, pinnedFirst: prefs.pinnedItemsFirst)
         tableView.reloadData()
         if filtered.isEmpty {
             // nothing to select
         } else if tableView.selectedRow < 0 || tableView.selectedRow >= filtered.count {
             tableView.selectRowIndexes([0], byExtendingSelection: false)
+        }
+    }
+
+    /// Briefly replace the hint bar with an action confirmation. The
+    /// hint label restores after `duration` seconds. Used by pin /
+    /// unpin / delete so the user sees an immediate "yes, I did that"
+    /// signal even when the row's visual change isn't dramatic.
+    private var hintRestoreTimer: Timer?
+    private let defaultHintText = "↑↓/Tab select   ↩ paste   ⌘1–9 quick-pick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close"
+
+    private func flashHint(_ message: String, duration: TimeInterval = 1.6) {
+        hintLabel.stringValue = message
+        hintLabel.textColor = .controlAccentColor
+        hintRestoreTimer?.invalidate()
+        hintRestoreTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
+            self?.hintLabel.stringValue = self?.defaultHintText ?? ""
+            self?.hintLabel.textColor = .secondaryLabelColor
         }
     }
 
@@ -330,7 +353,14 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private func togglePinSelection() {
         let row = tableView.selectedRow
         guard row >= 0 && row < filtered.count else { return }
-        store.togglePin(id: filtered[row].id)
+        let item = filtered[row]
+        let willBePinned = !item.pinned
+        store.togglePin(id: item.id)
+        let preview = item.preview.replacingOccurrences(of: "\n", with: " ")
+            .prefix(48)
+        flashHint(willBePinned
+            ? "📌 Pinned — survives history eviction and snippet expansion"
+            : "Unpinned “\(preview)”")
     }
 
     private func editTriggerOnSelection() {
@@ -344,7 +374,11 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private func deleteSelected() {
         let row = tableView.selectedRow
         guard row >= 0 && row < filtered.count else { return }
-        store.remove(id: filtered[row].id)
+        let item = filtered[row]
+        store.remove(id: item.id)
+        let preview = item.preview.replacingOccurrences(of: "\n", with: " ")
+            .prefix(48)
+        flashHint("Deleted “\(preview)”")
     }
 }
 
@@ -354,6 +388,31 @@ private final class ItemCellView: NSView {
 
     init(item: ClipboardItem, index: Int) {
         super.init(frame: .zero)
+
+        // Pinned-row visual upgrade (v1.9.0): a chunky colored left
+        // accent stripe + subtle background tint. Pinning was previously
+        // signaled only by a tiny 📌 emoji at the right edge of the
+        // cell — easy to miss, leading to "did pin even do anything?"
+        // confusion. Now the entire row visibly says "pinned."
+        if item.pinned {
+            wantsLayer = true
+            layer?.backgroundColor = NSColor.systemYellow
+                .withAlphaComponent(0.10).cgColor
+            layer?.cornerRadius = 4
+
+            let accent = NSView()
+            accent.wantsLayer = true
+            accent.layer?.backgroundColor = NSColor.systemYellow.cgColor
+            accent.layer?.cornerRadius = 1.5
+            accent.translatesAutoresizingMaskIntoConstraints = false
+            addSubview(accent)
+            NSLayoutConstraint.activate([
+                accent.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 3),
+                accent.topAnchor.constraint(equalTo: topAnchor, constant: 6),
+                accent.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -6),
+                accent.widthAnchor.constraint(equalToConstant: 3),
+            ])
+        }
 
         let badge = NSTextField(labelWithString: index < 9 ? "⌘\(index + 1)" : "")
         badge.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
@@ -380,8 +439,11 @@ private final class ItemCellView: NSView {
         preview.maximumNumberOfLines = 2
         preview.toolTip = item.preview
 
-        let pin = NSTextField(labelWithString: item.pinned ? "📌" : "")
-        pin.font = .systemFont(ofSize: 12)
+        let pin = NSTextField(labelWithString: item.pinned ? "📌 PINNED" : "")
+        pin.font = item.pinned
+            ? .systemFont(ofSize: 9, weight: .heavy)
+            : .systemFont(ofSize: 12)
+        pin.textColor = item.pinned ? .systemYellow : .secondaryLabelColor
 
         // Image thumbnail (only present for .image kind)
         let thumbnailView: NSImageView? = {

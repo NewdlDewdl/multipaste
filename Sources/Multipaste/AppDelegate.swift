@@ -13,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var snippetEngine = SnippetEngine(store: store)
     private lazy var picker = PickerWindow(
         store: store,
+        prefs: prefs,
         onPick: { [weak self] item, previousApp in
             self?.pickAndPaste(item, previousApp: previousApp)
         },

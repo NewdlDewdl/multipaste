@@ -58,6 +58,25 @@ public final class HistoryStore {
         items.filter { ($0.trigger?.isEmpty == false) }
     }
 
+    /// Items in the order the picker should render them.
+    ///
+    /// - If `pinnedFirst` is `false` (default), this is just `items` — the
+    ///   natural most-recent-first chronological order.
+    /// - If `pinnedFirst` is `true`, pinned items are hoisted to the top
+    ///   while preserving their relative recency. Unpinned items follow
+    ///   in their existing order. The sort is **stable**: relative order
+    ///   inside each group (pinned vs unpinned) is the same as in
+    ///   `items`.
+    public func sortedForDisplay(pinnedFirst: Bool) -> [ClipboardItem] {
+        guard pinnedFirst else { return items }
+        var pinned: [ClipboardItem] = []
+        var rest: [ClipboardItem] = []
+        for item in items {
+            if item.pinned { pinned.append(item) } else { rest.append(item) }
+        }
+        return pinned + rest
+    }
+
     public func togglePin(id: UUID) {
         guard let idx = items.firstIndex(where: { $0.id == id }) else { return }
         items[idx].pinned.toggle()
@@ -88,9 +107,16 @@ public final class HistoryStore {
     // MARK: - Query
 
     public func search(_ query: String) -> [ClipboardItem] {
+        return search(query, pinnedFirst: false)
+    }
+
+    /// Search + optional pinned-first sort. Matches are case-insensitive
+    /// substring on `preview`.
+    public func search(_ query: String, pinnedFirst: Bool) -> [ClipboardItem] {
+        let pool = sortedForDisplay(pinnedFirst: pinnedFirst)
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        if q.isEmpty { return items }
-        return items.filter { $0.preview.range(of: q, options: .caseInsensitive) != nil }
+        if q.isEmpty { return pool }
+        return pool.filter { $0.preview.range(of: q, options: .caseInsensitive) != nil }
     }
 
     // MARK: - Observation

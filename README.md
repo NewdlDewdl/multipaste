@@ -13,8 +13,8 @@ No subscriptions, no Electron, no telemetry, no account. ~700 KB of
 native Swift in a 440 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
 starts at login.
 
-**Latest release:** [v1.8.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
-&nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 78 unit tests
+**Latest release:** [v1.9.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+&nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 83 unit tests
 &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
@@ -23,7 +23,7 @@ starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-1.8.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-1.9.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (~420 KB).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
@@ -413,7 +413,9 @@ Coverage:
 | `UpdateChecker`        | 6     | up-to-date, update-available, downgrade ignored, skipped-version, GitHub JSON parse, error on missing fields |
 | `PasteboardAugmenter`  | 7     | path-text single/multi/empty, augment-when-nil/empty/whitespace, don't-clobber-real-text |
 | `TabNavigation`        | 9     | search→row, between-rows, clamp at last row, Shift+Tab edges, empty list, single-row, three-row full traversal |
-| **Total**              | **78**| Pure logic; UI is integration-tested manually          |
+| `HistoryStore` (pinned-first) | 3 | pinnedFirst=false preserves recency, pinnedFirst=true hoists pinned, within-group order preserved |
+| `Preferences` (pinned-first)  | 2 | default false, persistence |
+| **Total**              | **83**| Pure logic; UI is integration-tested manually          |
 
 ---
 
