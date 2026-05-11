@@ -1,5 +1,28 @@
 # Changelog
 
+## 1.6.1 — 2026-05-11
+
+Hotfix: 1.6.0 froze before its main loop ever started.
+
+`SingleInstance.enforce()` ran `/bin/ps -Ao pid,lstart,command` with the
+naive `task.waitUntilExit()` + `readDataToEndOfFile()` pattern. On a busy
+macOS system the ps output exceeded the 64 KB pipe buffer, ps blocked
+writing, the Swift side blocked waiting — classic UNIX pipe deadlock.
+Multipaste's main thread was stuck at `main.swift:9` for the entire
+lifetime of v1.6.0, never reaching `NSApp.run()`. No menu-bar icon, no
+Welcome window, no anything — even though the process was technically
+"alive."
+
+This is the same deadlock that was already fixed inside
+`Diagnostics.readCodesign` in 1.6.0 — but `SingleInstance` had a copy of
+the pattern that was missed.
+
+**Fix**: install an async `readabilityHandler` on the pipe that drains
+into a `Data` accumulator before `waitUntilExit`. Same fix that worked
+for codesign now applied to ps. Detection: the `sample` tool's call
+graph showed the stack pinned at `Multipaste_main + 20`, which is line 9
+of `main.swift` — `SingleInstance.enforce()`.
+
 ## 1.6.0 — 2026-05-11
 
 Fixes "I granted Accessibility access but Multipaste still says OFF" — the

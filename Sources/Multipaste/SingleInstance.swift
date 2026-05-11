@@ -13,18 +13,44 @@ enum SingleInstance {
 
     /// Returns true if we should keep running, false if we should exit
     /// because a newer Multipaste instance is already running.
+    ///
+    /// CRITICAL: we drain the pipe ASYNCHRONOUSLY before `waitUntilExit`.
+    /// `ps -Ao` on a busy macOS system easily exceeds the 64 KB pipe
+    /// buffer, and the naive `waitUntilExit` + `readDataToEndOfFile`
+    /// pattern deadlocks: ps blocks writing, we block waiting for ps to
+    /// exit. v1.6.0 shipped with that deadlock and the entire app froze
+    /// at `main.swift` line 9 — no menu-bar icon, no Welcome window, no
+    /// anything. Same fix as Diagnostics.readCodesign.
     @discardableResult
     static func enforce() -> Bool {
         let me = ProcessInfo.processInfo.processIdentifier
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/ps")
-        task.arguments = ["-Ao", "pid,lstart,command"]
+        task.arguments = ["-Ao", "pid,command"]
         let pipe = Pipe()
         task.standardOutput = pipe
-        do { try task.run(); task.waitUntilExit() } catch { return true }
+        task.standardError = Pipe()
 
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
-        let text = String(data: data, encoding: .utf8) ?? ""
+        var collected = Data()
+        let group = DispatchGroup()
+        group.enter()
+        pipe.fileHandleForReading.readabilityHandler = { handle in
+            let chunk = handle.availableData
+            if chunk.isEmpty {
+                handle.readabilityHandler = nil
+                group.leave()
+            } else {
+                collected.append(chunk)
+            }
+        }
+        do { try task.run() } catch {
+            pipe.fileHandleForReading.readabilityHandler = nil
+            return true
+        }
+        task.waitUntilExit()
+        _ = group.wait(timeout: .now() + .seconds(3))
+
+        let text = String(data: collected, encoding: .utf8) ?? ""
         var siblings: [Int32] = []
         for line in text.split(separator: "\n") {
             guard line.contains("Multipaste.app/Contents/MacOS/Multipaste") else { continue }
