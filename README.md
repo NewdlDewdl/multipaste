@@ -13,8 +13,8 @@ No subscriptions, no Electron, no telemetry, no account. ~700 KB of
 native Swift in a 440 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
 starts at login.
 
-**Latest release:** [v1.7.1](https://github.com/NewdlDewdl/multipaste/releases/latest)
-&nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 69 unit tests
+**Latest release:** [v1.8.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+&nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 78 unit tests
 &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
@@ -23,7 +23,7 @@ starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-1.7.1.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-1.8.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (~420 KB).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
@@ -70,16 +70,17 @@ custom test harness.
 
 In the picker:
 
-| Key                | Action                                        |
-| ------------------ | --------------------------------------------- |
-| `↑` / `↓`          | Move selection                                |
-| `↩`                | Paste selected item                           |
-| `⌘1` … `⌘9`        | Quick-paste the Nth visible item              |
-| `⌘P`               | Pin / unpin selected item                     |
-| `⌘E`               | Set / edit a snippet trigger for the item     |
-| `⌘⌫`               | Delete selected item from history             |
-| `esc`              | Close picker                                  |
-| type anything      | Filter the history (case-insensitive)         |
+| Key                | Action                                                          |
+| ------------------ | --------------------------------------------------------------- |
+| `↑` / `↓`          | Move selection                                                  |
+| `Tab` / `⇧Tab`     | Walk search ↔ row 1 ↔ row 2 ↔ … (linear focus traversal)        |
+| `↩`                | Paste selected item                                             |
+| `⌘1` … `⌘9`        | Quick-paste the Nth visible item                                |
+| `⌘P`               | Pin / unpin selected item                                       |
+| `⌘E`               | Set / edit a snippet trigger for the item                       |
+| `⌘⌫`               | Delete selected item from history                               |
+| `esc`              | Close picker                                                    |
+| type anything      | Filter the history (case-insensitive)                           |
 
 The default global hotkey is `⌘⇧V`. Change it in **Preferences → General → Hotkey**.
 
@@ -411,7 +412,8 @@ Coverage:
 | `SemanticVersion`      | 11    | v-prefix, garbage rejection, two-component rejection, ordering with double-digit components |
 | `UpdateChecker`        | 6     | up-to-date, update-available, downgrade ignored, skipped-version, GitHub JSON parse, error on missing fields |
 | `PasteboardAugmenter`  | 7     | path-text single/multi/empty, augment-when-nil/empty/whitespace, don't-clobber-real-text |
-| **Total**              | **69**| Pure logic; UI is integration-tested manually          |
+| `TabNavigation`        | 9     | search→row, between-rows, clamp at last row, Shift+Tab edges, empty list, single-row, three-row full traversal |
+| **Total**              | **78**| Pure logic; UI is integration-tested manually          |
 
 ---
 

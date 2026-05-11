@@ -1,5 +1,44 @@
 # Changelog
 
+## 1.8.0 — 2026-05-11
+
+### Tab / Shift+Tab focus traversal in the picker
+
+The picker now supports linear focus walking:
+
+    search field  ↔  row 1  ↔  row 2  ↔  …  ↔  row N
+
+- **`Tab`** from the search field moves focus to row 0 (the
+  most-recent item). Subsequent Tabs advance through rows. At the
+  last row Tab stops (no wrap — wrap would make Tab feel "lossy"
+  since you'd have to count back to know where you are).
+- **`Shift+Tab`** from a row moves to the previous row. From row 0
+  it returns focus to the search field (caret positioned at the end
+  of any existing query, so you can keep typing). From the search
+  field Shift+Tab is a no-op.
+
+Arrow keys still work as before for table-only selection — Tab adds
+the extra "exit the textbox" behavior on top.
+
+### What's added
+
+- **`MultipasteCore/TabNavigation`** — pure state machine with a
+  `FocusedRegion` enum (`searchField` / `row(Int)`) and `next` /
+  `previous` transitions. Policy lives here (clamp vs wrap, no-op
+  vs jump) so it's both trivially testable and trivially evolvable.
+- **9 new unit tests** — search→row, row→row, clamp-at-end,
+  Shift+Tab from row 0 to search, Shift+Tab from search no-op,
+  empty-list edge case, single-row round-trip, and a full eight-
+  step traversal across three rows.
+- **`PickerWindow.handleTab(reverse:)`** wires the state machine
+  to AppKit: snapshots current first-responder (search field's
+  field editor or table view), runs the transition, applies the
+  result by transferring first-responder and re-selecting rows.
+- **Hint bar** in the picker now reads `↑↓/Tab select` (was just
+  `↑↓ select`).
+- README "Keys" table gains a `Tab / ⇧Tab` row.
+- Test count: **78** (was 69).
+
 ## 1.7.2 — 2026-05-11
 
 Hotfix: clicking Diagnostics… hung the app. This is the **third**

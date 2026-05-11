@@ -86,7 +86,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         scrollView.translatesAutoresizingMaskIntoConstraints = false
         scrollView.borderType = .noBorder
 
-        hintLabel = NSTextField(labelWithString: "↑↓ select   ↩ paste   ⌘1–9 quick-pick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close")
+        hintLabel = NSTextField(labelWithString: "↑↓/Tab select   ↩ paste   ⌘1–9 quick-pick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close")
         hintLabel.font = .systemFont(ofSize: 11, weight: .regular)
         hintLabel.textColor = .secondaryLabelColor
         hintLabel.alignment = .center
@@ -214,6 +214,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
 
     private func handleKey(_ ev: NSEvent) -> Bool {
         let isCmd = ev.modifierFlags.contains(.command)
+        let isShift = ev.modifierFlags.contains(.shift)
         let chars = ev.charactersIgnoringModifiers ?? ""
 
         switch ev.keyCode {
@@ -221,6 +222,8 @@ final class PickerWindow: NSObject, NSWindowDelegate,
             hide(); return true
         case 36, 76: // return / enter
             commitSelection(); return true
+        case 48: // tab
+            handleTab(reverse: isShift); return true
         case 125: // arrow down
             moveSelection(by: 1); return true
         case 126: // arrow up
@@ -276,6 +279,52 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         let next = max(0, min(filtered.count - 1, cur + delta))
         tableView.selectRowIndexes([next], byExtendingSelection: false)
         tableView.scrollRowToVisible(next)
+    }
+
+    /// Compute the current logical focus position. The search field's
+    /// "first responder" is actually its field editor (the NSTextView
+    /// AppKit substitutes for typing), so we compare against either.
+    private func currentFocusedRegion() -> FocusedRegion {
+        if panel.firstResponder === searchField ||
+            (searchField.currentEditor() != nil &&
+             panel.firstResponder === searchField.currentEditor()) {
+            return .searchField
+        }
+        if panel.firstResponder === tableView {
+            let row = tableView.selectedRow
+            return row >= 0 ? .row(row) : .searchField
+        }
+        // Anything else (rare) — treat as search to keep behavior sane.
+        return .searchField
+    }
+
+    /// Apply a logical focus position to the actual AppKit state:
+    /// transfer first-responder, adjust table selection.
+    private func applyFocus(_ region: FocusedRegion) {
+        switch region {
+        case .searchField:
+            panel.makeFirstResponder(searchField)
+            // Move the caret to the end of the existing query so the
+            // user can keep typing without re-positioning.
+            if let editor = searchField.currentEditor() as? NSTextView {
+                let len = (searchField.stringValue as NSString).length
+                editor.selectedRange = NSRange(location: len, length: 0)
+            }
+        case .row(let i):
+            panel.makeFirstResponder(tableView)
+            tableView.selectRowIndexes([i], byExtendingSelection: false)
+            tableView.scrollRowToVisible(i)
+        }
+    }
+
+    /// Tab navigation, both forward and reverse.
+    private func handleTab(reverse: Bool) {
+        let here = currentFocusedRegion()
+        let total = filtered.count
+        let next = reverse
+            ? TabNavigation.previous(from: here, totalRows: total)
+            : TabNavigation.next(from: here, totalRows: total)
+        applyFocus(next)
     }
 
     private func togglePinSelection() {
