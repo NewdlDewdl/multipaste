@@ -1,5 +1,65 @@
 # Changelog
 
+## 1.6.0 — 2026-05-11
+
+Fixes "I granted Accessibility access but Multipaste still says OFF" — the
+real, root-cause version. Three independent bugs found and fixed.
+
+### Bug 1: LaunchAgent-supervised processes don't inherit TCC grants
+
+The biggest issue. v1.0–1.5 used a LaunchAgent plist in
+`~/Library/LaunchAgents/` as the auto-start mechanism. macOS Tahoe's TCC
+framework refuses to apply Accessibility grants to processes spawned by
+launchd as user-level LaunchAgents — even with a stable designated
+requirement, even when the same .app bundle gets `trust=ON` when
+launched directly.
+
+**Fix**: switched to `SMAppService.mainApp.register()` (the modern
+Apple-recommended path, what Maccy / Rectangle / AltTab use). DMG users
+flip "Enable" in the Welcome window; the bundle registers itself as a
+Login Item and surfaces in System Settings → General → Login Items.
+
+**Migration**: on first launch, v1.6.0 detects leftover LaunchAgent
+plists from earlier installs and removes them automatically.
+
+### Bug 2: TCC indexes permissions by cdhash; rebuilds drift
+
+Every `make install` produced a fresh ad-hoc-signed binary with a new
+cdhash, and TCC kept the permission grant pinned to the old cdhash.
+
+**Fix**: `scripts/build.sh` now signs with `--requirements
+'=designated => identifier "com.rohin.multipaste"'`, making the
+designated requirement match by bundle identifier rather than cdhash.
+On macOS 14+ this lets TCC carry grants across rebuilds.
+
+**Escape hatch**: **Reset Accessibility Permission** menu item runs
+`/usr/bin/tccutil reset Accessibility com.rohin.multipaste` to wipe
+stuck entries from pre-1.6.0 cdhash drift.
+
+### Bug 3: Duplicate supervisors fighting
+
+LaunchAgent + SMAppService Login Item could be active simultaneously,
+spawning two Multipaste processes that wrote over each other's history
+JSON.
+
+**Fix**: `SingleInstance.enforce()` at startup kills sibling Multipaste
+processes; combined with the migration above, only one supervisor
+remains.
+
+### Visibility improvements
+
+- **`~/Library/Logs/Multipaste/multipaste.log`** — boot line on every
+  start (`trust=ON|OFF`, pid, bundle path) plus a line every time the
+  trust state flips. Works for both terminal-launched and Login-Item-
+  launched processes (writes to file + stderr).
+- **Diagnostics…** menu item: scrollable view of version, bundle path,
+  signing identifier, designated requirement, cdhash, login-item
+  status, sibling PIDs, with a Copy-to-Clipboard button.
+- **install.sh** rewritten — copies the .app, registers with Launch
+  Services, and `open`s it. No more LaunchAgent plist creation.
+- **uninstall.sh** cleans up the legacy LaunchAgent plist if a
+  pre-1.6.0 install left one behind.
+
 ## 1.5.0 — 2026-05-11
 
 Fixes "I granted access but the icon didn't brighten."

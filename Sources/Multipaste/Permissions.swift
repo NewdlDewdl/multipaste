@@ -19,6 +19,30 @@ enum Permissions {
         return AXIsProcessTrustedWithOptions(opts as CFDictionary)
     }
 
+    /// Wipe Multipaste's Accessibility TCC entry so the user can re-grant
+    /// from scratch. Useful when a previous grant became stale (typical
+    /// after an update changed the cdhash and TCC indexes by cdhash).
+    /// Uses `/usr/bin/tccutil` rather than the Homebrew Python wrapper,
+    /// which is broken on Python 3.14.
+    @discardableResult
+    static func resetAccessibilityPermission() -> String? {
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/tccutil")
+        task.arguments = ["reset", "Accessibility", "com.rohin.multipaste"]
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
+        do {
+            try task.run()
+            task.waitUntilExit()
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let out = String(data: data, encoding: .utf8) ?? ""
+            return task.terminationStatus == 0 ? nil : out
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
     /// One-call helper: trigger the system add-to-list prompt AND open
     /// System Settings straight to the Accessibility pane AND show a
     /// step-by-step alert. This is the canonical "Grant Accessibility"

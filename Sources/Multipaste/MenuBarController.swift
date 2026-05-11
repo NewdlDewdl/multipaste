@@ -207,6 +207,19 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         check.target = self
         menu.addItem(check)
 
+        let diag = NSMenuItem(title: "Diagnostics\u{2026}",
+                              action: #selector(handleDiagnostics), keyEquivalent: "")
+        diag.target = self
+        diag.toolTip = "See Multipaste's view of the world. First thing to check if something seems off."
+        menu.addItem(diag)
+
+        let resetItem = NSMenuItem(title: "Reset Accessibility Permission",
+                                    action: #selector(handleResetAccessibility),
+                                    keyEquivalent: "")
+        resetItem.target = self
+        resetItem.toolTip = "Wipe the macOS TCC entry. Use when a previous grant has become stuck."
+        menu.addItem(resetItem)
+
         let relaunchItem = NSMenuItem(title: "Quit & Relaunch",
                                        action: #selector(handleRelaunch), keyEquivalent: "")
         relaunchItem.target = self
@@ -238,9 +251,67 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func handleClearAll()           { store.clearAll() }
     @objc private func handleShowSettings()       { onShowSettings() }
     @objc private func handleCheckForUpdates()    { onCheckForUpdates() }
-    @objc private func handleGrantAccessibility() { onGrantAccessibility() }
-    @objc private func handleRelaunch()            { onRelaunch() }
-    @objc private func handleQuit()                { onQuit() }
+    @objc private func handleGrantAccessibility()  { onGrantAccessibility() }
+    @objc private func handleRelaunch()             { onRelaunch() }
+    @objc private func handleQuit()                 { onQuit() }
+    @objc private func handleDiagnostics()          { showDiagnostics() }
+    @objc private func handleResetAccessibility()   { resetAccessibilityWithConfirm() }
+
+    private func showDiagnostics() {
+        let snapshot = Diagnostics.snapshot()
+        let text = Diagnostics.summary(snapshot)
+        let alert = NSAlert()
+        alert.messageText = "Multipaste diagnostics"
+        let scroll = NSScrollView(frame: NSRect(x: 0, y: 0, width: 540, height: 280))
+        let tv = NSTextView(frame: NSRect(x: 0, y: 0, width: 540, height: 280))
+        tv.isEditable = false
+        tv.font = NSFont.monospacedSystemFont(ofSize: 11, weight: .regular)
+        tv.string = text
+        scroll.documentView = tv
+        scroll.hasVerticalScroller = true
+        scroll.borderType = .bezelBorder
+        alert.accessoryView = scroll
+        alert.addButton(withTitle: "Copy to Clipboard")
+        alert.addButton(withTitle: "Close")
+        if alert.runModal() == .alertFirstButtonReturn {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+        }
+    }
+
+    private func resetAccessibilityWithConfirm() {
+        let alert = NSAlert()
+        alert.messageText = "Reset Multipaste's Accessibility entry?"
+        alert.informativeText = """
+            This wipes Multipaste from System Settings → Privacy & Security → Accessibility. After it's reset, you'll need to grant access again (Multipaste guides you through this — it's two clicks).
+
+            Use this when:
+              • You toggled Accessibility on but Multipaste still says OFF.
+              • A previous version's grant became stuck after an update.
+            """
+        alert.addButton(withTitle: "Reset")
+        alert.addButton(withTitle: "Cancel")
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+
+        if let err = Permissions.resetAccessibilityPermission() {
+            let e = NSAlert()
+            e.messageText = "Couldn't reset"
+            e.informativeText = err
+            e.runModal()
+            return
+        }
+
+        let followup = NSAlert()
+        followup.messageText = "Done. Now relaunch Multipaste."
+        followup.informativeText = """
+            macOS needs a fresh Multipaste process to pick up the cleared permission state. Click Quit & Relaunch, then click Grant Accessibility… in the menu after Multipaste restarts.
+            """
+        followup.addButton(withTitle: "Quit & Relaunch")
+        followup.addButton(withTitle: "Not Now")
+        if followup.runModal() == .alertFirstButtonReturn {
+            onRelaunch()
+        }
+    }
 
     @objc private func handleOpenFolder() {
         let url = AppPaths.dataDirectory

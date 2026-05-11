@@ -216,17 +216,17 @@ final class WelcomeWindow: NSObject, NSWindowDelegate {
     @objc private func enableLoginItem() {
         if let err = LoginItem.enable() {
             let alert = NSAlert()
-            alert.messageText = "Couldn't enable auto-start"
+            alert.messageText = "Couldn't enable Start at login"
             alert.informativeText = """
                 \(err)
 
-                Multipaste needs to be in your Applications folder before it can register as a login item. Move Multipaste.app to /Applications (or ~/Applications) and try again.
+                Multipaste needs to live in /Applications or ~/Applications before it can register as a Login Item. Move Multipaste.app there and try again.
                 """
             alert.runModal()
-        } else {
-            prefs.launchAtLogin = true
-            refreshSummaries()
+            return
         }
+        prefs.launchAtLogin = true
+        refreshSummaries()
     }
 
     @objc private func close() {

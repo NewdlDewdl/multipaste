@@ -21,10 +21,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         store: store,
         onHotkeyChanged: { [weak self] hk in self?.rebindHotkey(hk) },
         onLaunchAtLoginChanged: { enabled in
-            // Prefer the modern Login Item API; fall back to the legacy
-            // LaunchAgent toggle for installs that came through install.sh.
+            // Single supervisor: SMAppService Login Item. The legacy
+            // LaunchAgent is migrated away on startup (see
+            // migrateLaunchAgentToLoginItem in AppDelegate).
             if enabled { LoginItem.enable() } else { LoginItem.disable() }
-            LoginAgent.setEnabled(enabled)
         }
     )
     private lazy var welcome = WelcomeWindow(prefs: prefs) { [weak self] in
@@ -85,14 +85,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             queue: .main
         ) { [weak self] _ in self?.permissionMonitor.refresh() }
 
-        // First-run experience: show Welcome window once. On subsequent
-        // launches the menu bar icon + hotkey are enough.
+        // Supervisor convergence: SMAppService Login Item is the ONE
+        // supervisor for auto-start. The LaunchAgent path (used by
+        // install.sh in v1.0–1.5) is removed because LaunchAgent-
+        // supervised processes don't inherit the user's Accessibility
+        // TCC grant — AXIsProcessTrusted() returns false even after
+        // the user toggles Multipaste on in System Settings. Same .app,
+        // same cdhash, same designated requirement — just a different
+        // launch context, and TCC says no.
+        //
+        // Migration: if a LaunchAgent plist from a previous install
+        // still exists, unload it and delete it now. Then register
+        // SMAppService so the app starts at login via the Login Items
+        // mechanism that System Settings → General → Login Items
+        // surfaces.
+        migrateLaunchAgentToLoginItem()
+
+        // First-run: auto-enable Login Item if we're installed in an
+        // Applications folder. (`SMAppService.mainApp.register()`
+        // requires the bundle to live in /Applications or
+        // ~/Applications — running from ~/Downloads silently fails.)
         if !prefs.hasCompletedFirstRun {
-            // If running from /Applications or ~/Applications, auto-enable
-            // login item on behalf of the user (they can flip it off in
-            // the Welcome window). If running from elsewhere (Downloads,
-            // Desktop), DON'T auto-register — that path would silently
-            // unregister itself the moment the user moves the app.
             if isInApplicationsFolder() {
                 LoginItem.enable()
             }
@@ -102,11 +115,39 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// True if Multipaste.app currently lives in /Applications or ~/Applications.
+    /// Path to Multipaste.app's containing Applications folder, used by
+    /// SMAppService.mainApp.register() — must be /Applications or
+    /// ~/Applications, not Downloads/Desktop.
     private func isInApplicationsFolder() -> Bool {
         let path = Bundle.main.bundlePath
         return path.hasPrefix("/Applications/")
             || path.hasPrefix(NSHomeDirectory() + "/Applications/")
+    }
+
+    /// One-shot migration: if a LaunchAgent plist from a previous
+    /// install version exists, unload it and delete it. The LaunchAgent
+    /// path was abandoned in 1.6.0 because LaunchAgent-launched processes
+    /// don't inherit user TCC grants on macOS Tahoe.
+    private func migrateLaunchAgentToLoginItem() {
+        let plistPath = NSHomeDirectory() + "/Library/LaunchAgents/com.rohin.multipaste.plist"
+        guard FileManager.default.fileExists(atPath: plistPath) else { return }
+
+        FileHandle.standardError.write(Data(
+            "[multipaste] migrating from LaunchAgent to SMAppService Login Item\n".utf8
+        ))
+        let uid = String(getuid())
+        for args in [
+            ["bootout", "gui/\(uid)/com.rohin.multipaste"],
+            ["disable", "gui/\(uid)/com.rohin.multipaste"],
+        ] {
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+            task.arguments = args
+            task.standardOutput = Pipe()
+            task.standardError = Pipe()
+            do { try task.run(); task.waitUntilExit() } catch {}
+        }
+        try? FileManager.default.removeItem(atPath: plistPath)
     }
 
     private func afterWelcomeDismissed() {
@@ -115,10 +156,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     /// Called by `PermissionMonitor` whenever the Accessibility-trust
     /// state flips. We use this to:
+    ///   - log the transition to the known log file
     ///   - update the menu bar icon (banner row, dimmed icon)
     ///   - re-start the snippet engine the moment access is granted
     ///   - surface a quick toast so the user knows it worked
     private func handlePermissionChange(granted: Bool) {
+        Diagnostics.log("Accessibility trust flipped to \(granted ? "ON" : "OFF")")
         menubar.setAccessibilityGranted(granted)
         if granted {
             // Snippet engine's tap was a no-op before. Kick it back up.

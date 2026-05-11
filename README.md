@@ -152,6 +152,19 @@ If Multipaste was running before you toggled, quit it (menu-bar 📋 → Quit)
 and relaunch from Applications so the new permission registers. (v1.4.0
 detects this automatically — no restart needed — but older versions don't.)
 
+### Troubleshooting: diagnostics first
+
+The menu has a **Diagnostics…** item that shows everything Multipaste
+thinks is true: its trust state, code-signing hash, bundle path, sibling
+processes, and login-item status. It's the first thing to open when
+something seems off — paste the output into an issue if you need help.
+
+Multipaste also writes a boot log line to
+**`~/Library/Logs/Multipaste/multipaste.log`** every time it starts and
+every time the trust state flips. `tail -f` that file while you toggle
+the System Settings switch — you'll see the flip the instant macOS
+applies it.
+
 ### If the icon doesn't brighten after you grant access
 
 You'll see this maybe one time in five — macOS's TCC framework can hold
@@ -162,6 +175,20 @@ menu-bar icon is still dim and the menu still says **Accessibility: OFF**.
 
 **The one-click fix is built in:** menu-bar 📋 → **Quit & Relaunch**.
 A fresh process gets a clean read of the trust bit, and you're done.
+
+**If Quit & Relaunch alone doesn't unstick it** (rare — happens when a
+previous install left a stale TCC entry whose code-signing hash no
+longer matches the current binary), there's also **Reset Accessibility
+Permission** in the menu. It wipes the macOS TCC entry for Multipaste,
+relaunches the app, and walks you through granting fresh. This is the
+nuclear option but it always works.
+
+Why this exists: ad-hoc-signed open-source apps (no $99/yr Apple
+Developer account) get a new code-signing hash on every build, and
+macOS's permission database can sometimes cling to the *old* hash.
+v1.6.0 stabilized the *designated requirement* to be based on bundle
+identifier rather than hash — so future updates inherit grants — but
+existing stale entries need a one-time reset.
 
 Multipaste also detects this stuck case automatically. After you click
 the "Grant Accessibility access…" banner, Multipaste polls 4 times per

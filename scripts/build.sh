@@ -44,10 +44,19 @@ cp Resources/Multipaste.icns "$APP/Contents/Resources/Multipaste.icns"
 
 chmod +x "$APP/Contents/MacOS/Multipaste"
 
-# Ad-hoc codesign so the system gives the app a stable identity (needed
-# for TCC permissions like Accessibility to persist across rebuilds).
-echo "==> ad-hoc codesign"
-codesign --force --deep --sign - --options runtime --timestamp=none "$APP"
+# Ad-hoc codesign with a designated requirement that matches by bundle
+# identifier instead of by cdhash. Without this override, the default DR
+# pins TCC permissions (Accessibility, Input Monitoring) to a specific
+# cdhash — and every rebuild changes the cdhash, so the user re-grants
+# Accessibility on every update. With `identifier "..."` as the DR, TCC
+# can match new builds to old grants. macOS 14+ honors this for ad-hoc.
+echo "==> ad-hoc codesign with stable designated requirement"
+codesign --force --deep --sign - \
+    --identifier com.rohin.multipaste \
+    --requirements '=designated => identifier "com.rohin.multipaste"' \
+    --options runtime \
+    --timestamp=none \
+    "$APP"
 
 # Sanity: ensure the bundle is well-formed.
 codesign --verify --deep --strict "$APP"
