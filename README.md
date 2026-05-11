@@ -90,6 +90,20 @@ They don't do trigger-based snippet expansion either.
 
 ---
 
+## Updates
+
+Multipaste checks the GitHub Releases API on launch and once every 24
+hours after that. When a newer version exists, you get a single alert
+with three choices: Download, Skip This Version, or Remind Me Later.
+**Silent when you're up-to-date.**
+
+To check manually: menu-bar 📋 → **Check for Updates…**.
+
+There's no auto-installer — the alert opens the release page in your
+browser where you grab the new DMG (or run `brew upgrade --cask
+multipaste`). Atomic-swap auto-installs require a code-signing identity
+we don't have; this is the next-best, and you stay in control.
+
 ## After install
 
 The first time you press the hotkey and pick an item, macOS will pop up the

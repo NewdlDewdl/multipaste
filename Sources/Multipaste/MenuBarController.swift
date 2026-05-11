@@ -12,6 +12,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onShowPicker: () -> Void
     private let onPasteItem: (ClipboardItem) -> Void
     private let onShowSettings: () -> Void
+    private let onCheckForUpdates: () -> Void
     private let onQuit: () -> Void
 
     init(store: HistoryStore,
@@ -20,6 +21,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
          onShowPicker: @escaping () -> Void,
          onPasteItem: @escaping (ClipboardItem) -> Void,
          onShowSettings: @escaping () -> Void,
+         onCheckForUpdates: @escaping () -> Void,
          onQuit: @escaping () -> Void) {
         self.store = store
         self.monitor = monitor
@@ -27,6 +29,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.onShowPicker = onShowPicker
         self.onPasteItem = onPasteItem
         self.onShowSettings = onShowSettings
+        self.onCheckForUpdates = onCheckForUpdates
         self.onQuit = onQuit
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
@@ -129,6 +132,11 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         openFolder.target = self
         menu.addItem(openFolder)
 
+        let check = NSMenuItem(title: "Check for Updates\u{2026}",
+                               action: #selector(handleCheckForUpdates), keyEquivalent: "")
+        check.target = self
+        menu.addItem(check)
+
         let about = NSMenuItem(title: "About Multipaste",
                                action: #selector(handleAbout), keyEquivalent: "")
         about.target = self
@@ -148,12 +156,13 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
     // MARK: - Actions
 
-    @objc private func handleShow()         { onShowPicker() }
-    @objc private func handlePause()        { monitor.paused.toggle() }
-    @objc private func handleClear()        { store.clear() }
-    @objc private func handleClearAll()     { store.clearAll() }
-    @objc private func handleShowSettings() { onShowSettings() }
-    @objc private func handleQuit()         { onQuit() }
+    @objc private func handleShow()             { onShowPicker() }
+    @objc private func handlePause()            { monitor.paused.toggle() }
+    @objc private func handleClear()            { store.clear() }
+    @objc private func handleClearAll()         { store.clearAll() }
+    @objc private func handleShowSettings()     { onShowSettings() }
+    @objc private func handleCheckForUpdates()  { onCheckForUpdates() }
+    @objc private func handleQuit()             { onQuit() }
 
     @objc private func handleOpenFolder() {
         let url = AppPaths.dataDirectory

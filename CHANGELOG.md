@@ -1,5 +1,25 @@
 # Changelog
 
+## 1.3.0 — 2026-05-11
+
+You never have to wonder "am I on the latest?" again.
+
+- **Built-in update checker.** Multipaste pings the GitHub Releases API
+  60 seconds after launch and every 24 hours after that. If a newer
+  release exists, you see a one-shot alert with Download / Skip This
+  Version / Remind Me Later buttons. Silent when up-to-date.
+- **"Check for Updates…"** menu item — manual check that *does* show
+  "you're on the latest" so the user gets explicit confirmation.
+- **Skip-version persistence.** Once you click Skip, that specific
+  version never re-prompts (but a newer one will).
+- New core types: `SemanticVersion` (parse / Comparable, handles leading
+  `v`, double-digit components, equality) and `UpdateChecker` (pure
+  comparison + GitHub-release JSON parsing). 17 new tests, 62 total.
+- App-target `UpdateService` wraps the URLSession fetch + scheduling +
+  alert UI. Pure logic stays in `MultipasteCore` and remains network-free.
+- README: add "Updates" section explaining the auto-check cadence and
+  the manual menu item.
+
 ## 1.2.0 — 2026-05-11
 
 End-user installable. No Terminal required.

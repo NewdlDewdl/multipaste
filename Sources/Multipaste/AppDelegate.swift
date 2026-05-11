@@ -30,6 +30,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var welcome = WelcomeWindow(prefs: prefs) { [weak self] in
         self?.afterWelcomeDismissed()
     }
+    private lazy var updateService = UpdateService(prefs: prefs)
     private lazy var menubar = MenuBarController(
         store: store,
         monitor: monitor,
@@ -37,6 +38,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         onShowPicker: { [weak self] in self?.picker.show() },
         onPasteItem:  { [weak self] item in self?.pickAndPaste(item) },
         onShowSettings: { [weak self] in self?.settings.show() },
+        onCheckForUpdates: { [weak self] in self?.updateService.checkNow() },
         onQuit:       { NSApp.terminate(nil) }
     )
 
@@ -59,6 +61,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // for next login). We could re-attempt every N seconds; the simple
         // path is enough for v1.1.
         snippetEngine.start()
+        updateService.start()
 
         // First-run experience: show Welcome window once. On subsequent
         // launches the menu bar icon + hotkey are enough.
