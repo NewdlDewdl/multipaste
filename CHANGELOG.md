@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.5.0 — 2026-05-11
+
+Fixes "I granted access but the icon didn't brighten."
+
+- **Timer scheduled in `.common` runloop modes** so the poller keeps
+  firing while menus are tracked and `NSAlert`s are modal. The v1.4.0
+  poller silently paused while the user was reading the very alert that
+  told them what to do. This is the primary cause behind v1.4.0's
+  reported "didn't auto-detect" symptom.
+- **Burst-poll mode**: after the user clicks "Grant Accessibility
+  access…", `PermissionMonitor` checks `AXIsProcessTrusted()` at 250 ms
+  cadence for 60 seconds — the toggle is caught within a single tick of
+  flipping.
+- **`PermissionMonitor.refresh()`** triggered on every `NSWorkspace
+  .didActivateApplication` event so the trust state is re-read the
+  moment the user comes back to Multipaste from System Settings.
+- **Quit & Relaunch** (`AppDelegate.relaunch()`) spawns a fresh app
+  process and terminates the current one, bypassing macOS's per-process
+  TCC cache. Available three ways:
+    - Permanent **Quit & Relaunch** menu item.
+    - **"Already toggled? Quit & Relaunch"** row under the warning banner.
+    - **Quit & Relaunch** button on the post-grant fallback alert that
+      fires when the burst-poll window elapses without a change.
+- **Live "Accessibility: ON/OFF" status row** in the menu so the user
+  always knows what Multipaste's actual in-process trust state is. No
+  guessing.
+- README: new "If the icon doesn't brighten after you grant access"
+  section explaining the macOS TCC cache and the relaunch fix.
+
 ## 1.4.0 — 2026-05-11
 
 Granting Accessibility is no longer a side quest.

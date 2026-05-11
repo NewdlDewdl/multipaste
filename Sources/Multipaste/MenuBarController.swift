@@ -14,6 +14,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     private let onShowSettings: () -> Void
     private let onCheckForUpdates: () -> Void
     private let onGrantAccessibility: () -> Void
+    private let onRelaunch: () -> Void
     private let onQuit: () -> Void
 
     /// Set by AppDelegate via `setAccessibilityState(_:)` whenever the
@@ -30,6 +31,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
          onShowSettings: @escaping () -> Void,
          onCheckForUpdates: @escaping () -> Void,
          onGrantAccessibility: @escaping () -> Void,
+         onRelaunch: @escaping () -> Void,
          onQuit: @escaping () -> Void) {
         self.store = store
         self.monitor = monitor
@@ -40,6 +42,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         self.onShowSettings = onShowSettings
         self.onCheckForUpdates = onCheckForUpdates
         self.onGrantAccessibility = onGrantAccessibility
+        self.onRelaunch = onRelaunch
         self.onQuit = onQuit
         self.statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         super.init()
@@ -116,8 +119,28 @@ final class MenuBarController: NSObject, NSMenuDelegate {
             why.isEnabled = false
             menu.addItem(why)
 
+            // Show Quit & Relaunch right below the banner — covers the
+            // common case where the user toggled access on but macOS is
+            // holding the stale per-process state.
+            let relaunch = NSMenuItem(title: "  Already toggled? Quit & Relaunch",
+                                       action: #selector(handleRelaunch),
+                                       keyEquivalent: "")
+            relaunch.target = self
+            relaunch.toolTip = "Restart Multipaste with a fresh read of the macOS trust state."
+            menu.addItem(relaunch)
+
             menu.addItem(NSMenuItem.separator())
         }
+
+        // Always-visible "Accessibility: ON/OFF" status row. The user
+        // can see the in-process truth at a glance, without guessing.
+        let status = NSMenuItem(
+            title: "Accessibility: \(accessibilityGranted ? "ON" : "OFF (auto-paste disabled)")",
+            action: nil, keyEquivalent: ""
+        )
+        status.isEnabled = false
+        menu.addItem(status)
+        menu.addItem(NSMenuItem.separator())
 
         let open = NSMenuItem(title: "Show Clipboard History  \(hotkeyDisplay)",
                               action: #selector(handleShow),
@@ -184,6 +207,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         check.target = self
         menu.addItem(check)
 
+        let relaunchItem = NSMenuItem(title: "Quit & Relaunch",
+                                       action: #selector(handleRelaunch), keyEquivalent: "")
+        relaunchItem.target = self
+        relaunchItem.toolTip = "Fresh process. Useful after granting Accessibility — picks up new permission state instantly."
+        menu.addItem(relaunchItem)
+
         let about = NSMenuItem(title: "About Multipaste",
                                action: #selector(handleAbout), keyEquivalent: "")
         about.target = self
@@ -210,7 +239,8 @@ final class MenuBarController: NSObject, NSMenuDelegate {
     @objc private func handleShowSettings()       { onShowSettings() }
     @objc private func handleCheckForUpdates()    { onCheckForUpdates() }
     @objc private func handleGrantAccessibility() { onGrantAccessibility() }
-    @objc private func handleQuit()               { onQuit() }
+    @objc private func handleRelaunch()            { onRelaunch() }
+    @objc private func handleQuit()                { onQuit() }
 
     @objc private func handleOpenFolder() {
         let url = AppPaths.dataDirectory

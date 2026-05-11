@@ -152,6 +152,24 @@ If Multipaste was running before you toggled, quit it (menu-bar 📋 → Quit)
 and relaunch from Applications so the new permission registers. (v1.4.0
 detects this automatically — no restart needed — but older versions don't.)
 
+### If the icon doesn't brighten after you grant access
+
+You'll see this maybe one time in five — macOS's TCC framework can hold
+the *previous* trust state for an already-running process even after
+you flip the toggle in System Settings. The signal you'll see: you
+toggled Multipaste on, the toggle is clearly on, but Multipaste's
+menu-bar icon is still dim and the menu still says **Accessibility: OFF**.
+
+**The one-click fix is built in:** menu-bar 📋 → **Quit & Relaunch**.
+A fresh process gets a clean read of the trust bit, and you're done.
+
+Multipaste also detects this stuck case automatically. After you click
+the "Grant Accessibility access…" banner, Multipaste polls 4 times per
+second for 60 seconds. If it doesn't see a state change in that window
+(meaning macOS is sitting on the cache), Multipaste pops up a "Did you
+grant Accessibility access?" alert with a one-click Quit & Relaunch
+button. You never have to guess what's wrong.
+
 ### What's it actually for?
 
 - **Auto-paste** — synthesizes ⌘V into the focused app after you pick an

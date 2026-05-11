@@ -42,6 +42,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         onShowSettings: { [weak self] in self?.settings.show() },
         onCheckForUpdates: { [weak self] in self?.updateService.checkNow() },
         onGrantAccessibility: { [weak self] in self?.walkThroughAccessibilityGrant() },
+        onRelaunch:   { [weak self] in self?.relaunch() },
         onQuit:       { NSApp.terminate(nil) }
     )
 
@@ -69,7 +70,20 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         permissionMonitor.onChange = { [weak self] granted in
             self?.handlePermissionChange(granted: granted)
         }
+        permissionMonitor.onBurstTimeout = { [weak self] in
+            self?.showRelaunchNeededAlert()
+        }
         permissionMonitor.start()
+
+        // Refresh trust when the user comes back to Multipaste from
+        // System Settings — gives instant feedback in addition to the
+        // poll, and helps when AXIsProcessTrusted() is sluggish to
+        // update across context switches.
+        NSWorkspace.shared.notificationCenter.addObserver(
+            forName: NSWorkspace.didActivateApplicationNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in self?.permissionMonitor.refresh() }
 
         // First-run experience: show Welcome window once. On subsequent
         // launches the menu bar icon + hotkey are enough.
@@ -131,8 +145,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///      to the Accessibility list so it's not "Where is it??"
     ///   2. Deep-link to the Accessibility pane
     ///   3. Step-by-step alert with the exact UI path
-    private func walkThroughAccessibilityGrant() {
+    ///   4. Burst-poll mode so detection is near-instant
+    func walkThroughAccessibilityGrant() {
         Permissions.walkUserThroughAccessibilityGrant()
+        permissionMonitor.burstPoll(duration: 60.0)
         let alert = NSAlert()
         alert.messageText = "Grant Accessibility access to Multipaste"
         alert.informativeText = """
@@ -143,14 +159,62 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
               2. Flip the toggle next to it to ON.
               3. macOS will ask for Touch ID or your password — confirm.
 
-            That's it. The menu-bar icon will brighten and a confirmation will appear here the moment access is granted.
+            Multipaste is checking 4 times per second for the next minute, so the icon will brighten within a heartbeat of you flipping the switch.
+
+            If the icon doesn't brighten after a few seconds: macOS sometimes holds the old permission state for a running process. Click "Quit & Relaunch" and the new Multipaste will pick it up immediately.
 
             Why this is needed: auto-paste (synthesizing \u{2318}V into the focused app) and snippet expansion (replacing your trigger text) both require Accessibility. Without it, picks still land on your clipboard and you can \u{2318}V manually.
             """
         alert.addButton(withTitle: "OK")
         alert.addButton(withTitle: "Open Settings Again")
-        if alert.runModal() == .alertSecondButtonReturn {
+        alert.addButton(withTitle: "Quit & Relaunch")
+        switch alert.runModal() {
+        case .alertSecondButtonReturn:
             Permissions.walkUserThroughAccessibilityGrant()
+        case .alertThirdButtonReturn:
+            relaunch()
+        default:
+            break
+        }
+    }
+
+    /// Show a fallback "this looks stuck — relaunch" alert. Triggered
+    /// by PermissionMonitor when its burst-poll window elapses without
+    /// detecting a state change. Covers the case where macOS's TCC
+    /// cache pins the running process to its old answer.
+    private func showRelaunchNeededAlert() {
+        guard !Permissions.isTrustedForAccessibility else { return }
+        let alert = NSAlert()
+        alert.messageText = "Did you grant Accessibility access?"
+        alert.informativeText = """
+            Multipaste didn't pick up a permission change in the last minute. If you did toggle Multipaste on in System Settings, macOS sometimes caches the old state for a running app — a quick relaunch picks it up.
+
+            (If you didn't toggle anything yet: click "Open Settings Again".)
+            """
+        alert.addButton(withTitle: "Quit & Relaunch")
+        alert.addButton(withTitle: "Open Settings Again")
+        alert.addButton(withTitle: "Not Now")
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            relaunch()
+        case .alertSecondButtonReturn:
+            walkThroughAccessibilityGrant()
+        default:
+            break
+        }
+    }
+
+    /// Spawn a fresh instance of this .app, then quit ourselves a beat
+    /// later. The new process gets a clean read of the Accessibility
+    /// trust bit, so any per-process TCC cache is bypassed.
+    func relaunch() {
+        let url = URL(fileURLWithPath: Bundle.main.bundlePath)
+        let cfg = NSWorkspace.OpenConfiguration()
+        cfg.createsNewApplicationInstance = true
+        NSWorkspace.shared.openApplication(at: url, configuration: cfg) { _, _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(500)) {
+                NSApp.terminate(nil)
+            }
         }
     }
 
