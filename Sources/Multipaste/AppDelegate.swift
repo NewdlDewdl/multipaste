@@ -20,8 +20,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         prefs: prefs,
         store: store,
         onHotkeyChanged: { [weak self] hk in self?.rebindHotkey(hk) },
-        onLaunchAtLoginChanged: { enabled in LoginAgent.setEnabled(enabled) }
+        onLaunchAtLoginChanged: { enabled in
+            // Prefer the modern Login Item API; fall back to the legacy
+            // LaunchAgent toggle for installs that came through install.sh.
+            if enabled { LoginItem.enable() } else { LoginItem.disable() }
+            LoginAgent.setEnabled(enabled)
+        }
     )
+    private lazy var welcome = WelcomeWindow(prefs: prefs) { [weak self] in
+        self?.afterWelcomeDismissed()
+    }
     private lazy var menubar = MenuBarController(
         store: store,
         monitor: monitor,
@@ -51,6 +59,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // for next login). We could re-attempt every N seconds; the simple
         // path is enough for v1.1.
         snippetEngine.start()
+
+        // First-run experience: show Welcome window once. On subsequent
+        // launches the menu bar icon + hotkey are enough.
+        if !prefs.hasCompletedFirstRun {
+            // If running from /Applications or ~/Applications, auto-enable
+            // login item on behalf of the user (they can flip it off in
+            // the Welcome window). If running from elsewhere (Downloads,
+            // Desktop), DON'T auto-register — that path would silently
+            // unregister itself the moment the user moves the app.
+            if isInApplicationsFolder() {
+                LoginItem.enable()
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(200)) { [weak self] in
+                self?.welcome.show()
+            }
+        }
+    }
+
+    /// True if Multipaste.app currently lives in /Applications or ~/Applications.
+    private func isInApplicationsFolder() -> Bool {
+        let path = Bundle.main.bundlePath
+        return path.hasPrefix("/Applications/")
+            || path.hasPrefix(NSHomeDirectory() + "/Applications/")
+    }
+
+    private func afterWelcomeDismissed() {
+        // No-op for now — kept as a hook for future setup steps.
     }
 
     func applicationWillTerminate(_ notification: Notification) {

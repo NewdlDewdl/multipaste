@@ -1,32 +1,96 @@
 # Multipaste
 
-**Win+V for macOS.** A native, persistent clipboard history with a global
-hotkey, a picker window, pinning, search, and full keyboard navigation.
-Built for macOS 13+ (tested on macOS 26 Tahoe).
+**Win+V for macOS.** A native, persistent clipboard history *and* snippet
+expander with a global hotkey, a picker window, pinning, search, and full
+keyboard navigation. Built for macOS 13+ (tested on macOS 26 Tahoe).
 
 ```
 Press ⌘⇧V anywhere → picker appears → ↑↓ pick → ↩ paste
 ```
 
-That's it. No subscriptions, no Electron, no telemetry. ~30k of native
-Swift, runs at ~0% CPU when idle, starts at login.
+That's it. No subscriptions, no Electron, no telemetry, no account. ~60 KB
+of native Swift, runs at ~0% CPU when idle, starts at login.
 
 ---
 
-## Quick start
+## Install
+
+### 🟢 Easy — drag and drop (no Terminal)
+
+1. Download **[Multipaste-1.2.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+   from the latest release.
+2. Open the DMG. Drag **Multipaste** onto **Applications**.
+3. Open your Applications folder, right-click **Multipaste**, choose **Open**,
+   then **Open** again in the warning dialog. *(macOS asks this once for any
+   app that isn't from the App Store — it won't ask again.)*
+4. The Welcome window appears. Click **Enable** under "Start at login",
+   then **Open System Settings** under "Accessibility" and toggle Multipaste
+   on. Click **Get Started**.
+
+You're done. Press ⌘⇧V anywhere.
+
+### 🍺 Homebrew — one command
 
 ```sh
-git clone <this repo>   # or just cd into ~/code/multipaste
-cd multipaste
-make install
+brew install --cask NewdlDewdl/multipaste/multipaste
 ```
 
-The installer will:
+Then open Multipaste from Spotlight or `/Applications` and follow the
+Welcome window. The cask handles uninstall (`brew uninstall --cask multipaste`)
+and clean-up of preferences when you `brew uninstall --zap`.
 
-1. Build a release `Multipaste.app` (`scripts/build.sh`)
-2. Copy it to `~/Applications/Multipaste.app`
-3. Install a LaunchAgent at `~/Library/LaunchAgents/com.rohin.multipaste.plist`
-4. Start the agent so Multipaste runs immediately and at every login
+### 🛠 From source (devs)
+
+```sh
+git clone https://github.com/NewdlDewdl/multipaste
+cd multipaste
+make install            # build + install + LaunchAgent + load
+```
+
+The legacy `install.sh` path uses a LaunchAgent instead of the modern
+Login Item. Both auto-start at login; pick whichever you prefer.
+
+---
+
+## How does it compare?
+
+| | **Multipaste** | Maccy | Flycut | Paste | Pastebot | CopyClip&nbsp;2 | Alfred | Raycast | Espanso |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Price** | 🆓 | 🆓 | 🆓 | $29.99/yr | $12.99 | Paid | £34+ | 🆓 (Pro $8+) | 🆓 |
+| **License** | MIT | MIT | MIT | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | GPL-3 |
+| **Clipboard history** | ✓ | ✓ | text only | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
+| **Image capture** | ✓ | ✓ | ✗ | ✓ | ✓ | ✗ | ✓ | ✓ | n/a |
+| **Rich text (RTF)** | ✓ | ✓ | ✗ | ✓ | ✓ | ✗ | ✗ | ✓ | n/a |
+| **File URLs** | ✓ | ✓ | ✗ | ✓ | ? | ✗ | ✓ | ✓ | n/a |
+| **Pinned items** | ✓ | ✓ | ✗ | ✓ (pinboards) | ✓ | ✓ | ~ | ✓ | n/a |
+| **Snippet expansion** | ✓ | ✗ | ✗ | ~ (no typed triggers) | ~ | ✗ | ✓ (separate) | ✓ (separate) | ✓ |
+| **History + snippets, one tool** | **✓** | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ | ✗ |
+| **Fuzzy search** | ✓ | ✓ | ✗ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Configurable hotkey** | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| **Password managers excluded** (`nspasteboard.org`) | ✓ | ✓ | ✗ | ? | ? | ~ | ~ | ✓ | n/a |
+| **Idle RAM** (approx) | **~50 MB** | ~80 MB | ~30 MB | ~150 MB | ~120 MB | ~60 MB | ~100 MB | ~250 MB | ~80 MB |
+| **Sign-in / account** | none | none | none | required | none | none | none | optional | none |
+| **Telemetry** | none | none | none | ? | ? | ? | none | yes | none |
+| **Open source** | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+
+**Why pick Multipaste over the closest free competitor (Maccy)?** Maccy
+doesn't do snippet expansion. Multipaste does, in the same window, on the
+same pinned items. Pin once, give it a trigger, type the trigger anywhere.
+
+**Why pick it over Raycast?** Raycast is closed-source, ships its own
+account flow, has telemetry, and is ~5× the RAM. Multipaste is one
+program, MIT, no network calls.
+
+**Why pick it over Espanso?** Espanso is snippet expansion only — no
+clipboard history. Multipaste does both. Snippets are defined inline
+(pin an item + give it a trigger), not in a YAML config file.
+
+**Why pick it over Paste or Pastebot?** They're paid; Multipaste is free.
+They don't do trigger-based snippet expansion either.
+
+---
+
+## After install
 
 The first time you press the hotkey and pick an item, macOS will pop up the
 **Accessibility** consent dialog. Toggle Multipaste on:
@@ -36,6 +100,9 @@ The first time you press the hotkey and pick an item, macOS will pop up the
 Once granted, every pick auto-pastes into the focused app — exactly like
 Win+V on Windows. Until then, picks still land on your clipboard and you can
 ⌘V manually.
+
+The Welcome window can re-open Accessibility settings for you with one
+click. If you missed it, open it again via the menu-bar icon → Preferences…
 
 ---
 

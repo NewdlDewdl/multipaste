@@ -8,6 +8,8 @@ enum PreferencesTests {
         TestRegistry.register("Preferences/roundTripPersistence", roundTripPersistence)
         TestRegistry.register("Preferences/hotkeyEncodesAndDecodes", hotkeyEncodesAndDecodes)
         TestRegistry.register("Preferences/maxHistoryClampedToReasonableRange", maxHistoryClampedToReasonableRange)
+        TestRegistry.register("Preferences/hasCompletedFirstRunDefaultsFalse", hasCompletedFirstRunDefaultsFalse)
+        TestRegistry.register("Preferences/hasCompletedFirstRunPersists", hasCompletedFirstRunPersists)
     }
 
     private static func freshDefaults() -> UserDefaults {
@@ -52,5 +54,18 @@ enum PreferencesTests {
         try expectEqual(p.maxHistory, 10, "clamp lower bound to 10")
         p.maxHistory = 5000
         try expectEqual(p.maxHistory, 2000, "clamp upper bound to 2000")
+    }
+
+    static func hasCompletedFirstRunDefaultsFalse() throws {
+        let p = Preferences(defaults: freshDefaults())
+        try expect(!p.hasCompletedFirstRun, "fresh install must show first-run UI")
+    }
+
+    static func hasCompletedFirstRunPersists() throws {
+        let d = freshDefaults()
+        let p1 = Preferences(defaults: d)
+        p1.hasCompletedFirstRun = true
+        let p2 = Preferences(defaults: d)
+        try expect(p2.hasCompletedFirstRun)
     }
 }

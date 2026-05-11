@@ -68,6 +68,13 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: Keys.launchAtLogin) }
     }
 
+    /// Set on first successful run-through of the Welcome window. Drives
+    /// whether the app shows onboarding at launch.
+    public var hasCompletedFirstRun: Bool {
+        get { defaults.bool(forKey: Keys.hasCompletedFirstRun) }
+        set { defaults.set(newValue, forKey: Keys.hasCompletedFirstRun) }
+    }
+
     public var hotkey: Hotkey {
         get {
             Hotkey(
@@ -82,10 +89,11 @@ public final class Preferences {
     }
 
     private enum Keys {
-        static let maxHistory       = "maxHistory"
-        static let pasteOnSelect    = "pasteOnSelect"
-        static let launchAtLogin    = "launchAtLogin"
-        static let hotkeyKeyCode    = "hotkey.keyCode"
-        static let hotkeyModifiers  = "hotkey.modifiers"
+        static let maxHistory           = "maxHistory"
+        static let pasteOnSelect        = "pasteOnSelect"
+        static let launchAtLogin        = "launchAtLogin"
+        static let hotkeyKeyCode        = "hotkey.keyCode"
+        static let hotkeyModifiers      = "hotkey.modifiers"
+        static let hasCompletedFirstRun = "hasCompletedFirstRun"
     }
 }

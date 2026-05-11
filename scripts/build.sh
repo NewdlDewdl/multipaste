@@ -35,6 +35,13 @@ cp "$BIN_PATH"        "$APP/Contents/MacOS/Multipaste"
 cp Resources/Info.plist "$APP/Contents/Info.plist"
 cp Resources/PkgInfo  "$APP/Contents/PkgInfo"
 
+# Ensure the icon is built and present in the bundle.
+if [[ ! -f Resources/Multipaste.icns ]]; then
+    echo "==> generating icon"
+    bash scripts/make-iconset.sh
+fi
+cp Resources/Multipaste.icns "$APP/Contents/Resources/Multipaste.icns"
+
 chmod +x "$APP/Contents/MacOS/Multipaste"
 
 # Ad-hoc codesign so the system gives the app a stable identity (needed
