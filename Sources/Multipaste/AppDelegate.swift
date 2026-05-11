@@ -8,7 +8,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         directory: AppPaths.dataDirectory,
         maxItems: prefs.maxHistory
     )
-    private lazy var monitor = ClipboardMonitor(store: store)
+    private lazy var monitor = ClipboardMonitor(store: store, prefs: prefs)
     private let hotKeyManager = HotKeyManager()
     private lazy var snippetEngine = SnippetEngine(store: store)
     private lazy var picker = PickerWindow(store: store, onPick: { [weak self] item in

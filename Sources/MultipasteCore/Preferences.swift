@@ -42,11 +42,12 @@ public final class Preferences {
     public init(defaults: UserDefaults) {
         self.defaults = defaults
         defaults.register(defaults: [
-            Keys.maxHistory:     200,
-            Keys.pasteOnSelect:  true,
-            Keys.launchAtLogin:  true,
-            Keys.hotkeyKeyCode:  Hotkey.default.keyCode,
-            Keys.hotkeyModifiers: Hotkey.default.modifiers.rawValue,
+            Keys.maxHistory:               200,
+            Keys.pasteOnSelect:            true,
+            Keys.launchAtLogin:            true,
+            Keys.hotkeyKeyCode:            Hotkey.default.keyCode,
+            Keys.hotkeyModifiers:          Hotkey.default.modifiers.rawValue,
+            Keys.augmentFileCopiesWithPath: true,
         ])
     }
 
@@ -75,6 +76,16 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: Keys.hasCompletedFirstRun) }
     }
 
+    /// When true, file-URL copies get the file path injected as the
+    /// `.string` representation of the pasteboard so text-only paste
+    /// targets (code editors, terminals) receive a path while file-URL
+    /// targets (chat composers, Finder) still receive the file itself.
+    /// Default on — there's no downside for normal use.
+    public var augmentFileCopiesWithPath: Bool {
+        get { defaults.bool(forKey: Keys.augmentFileCopiesWithPath) }
+        set { defaults.set(newValue, forKey: Keys.augmentFileCopiesWithPath) }
+    }
+
     public var hotkey: Hotkey {
         get {
             Hotkey(
@@ -89,11 +100,12 @@ public final class Preferences {
     }
 
     private enum Keys {
-        static let maxHistory           = "maxHistory"
-        static let pasteOnSelect        = "pasteOnSelect"
-        static let launchAtLogin        = "launchAtLogin"
-        static let hotkeyKeyCode        = "hotkey.keyCode"
-        static let hotkeyModifiers      = "hotkey.modifiers"
-        static let hasCompletedFirstRun = "hasCompletedFirstRun"
+        static let maxHistory               = "maxHistory"
+        static let pasteOnSelect            = "pasteOnSelect"
+        static let launchAtLogin            = "launchAtLogin"
+        static let hotkeyKeyCode            = "hotkey.keyCode"
+        static let hotkeyModifiers          = "hotkey.modifiers"
+        static let hasCompletedFirstRun     = "hasCompletedFirstRun"
+        static let augmentFileCopiesWithPath = "augmentFileCopiesWithPath"
     }
 }

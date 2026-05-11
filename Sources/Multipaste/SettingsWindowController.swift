@@ -84,6 +84,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var hotkeyField: HotkeyRecorderField!
     private var pasteOnSelectCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
+    private var augmentFileCopiesCheckbox: NSButton!
     private var maxHistoryField: NSTextField!
     private var maxHistoryStepper: NSStepper!
 
@@ -112,6 +113,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         launchCB.state = prefs.launchAtLogin ? .on : .off
         self.launchAtLoginCheckbox = launchCB
 
+        let augmentCB = NSButton(checkboxWithTitle: "Add file path as text on file copies",
+                                 target: self, action: #selector(toggleAugmentFileCopies))
+        augmentCB.state = prefs.augmentFileCopiesWithPath ? .on : .off
+        augmentCB.toolTip = "When you copy a file in Finder, Multipaste injects the full path as a plain-text representation so pasting in code editors gives you the path while pasting in chat composers still uploads the file."
+        self.augmentFileCopiesCheckbox = augmentCB
+
         let mhLabel = NSTextField(labelWithString: "History size:")
         let mhField = NSTextField()
         mhField.stringValue = "\(prefs.maxHistory)"
@@ -132,10 +139,17 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         mhHint.font = .systemFont(ofSize: 11)
         mhHint.textColor = .secondaryLabelColor
 
+        let augmentHint = NSTextField(labelWithString:
+            "Code editors paste the path; chat composers paste the file.")
+        augmentHint.font = .systemFont(ofSize: 11)
+        augmentHint.textColor = .secondaryLabelColor
+
         let rows: [NSView] = [
             row(hkLabel, hkField, hkHint),
             row(NSView(), pasteCB),
             row(NSView(), launchCB),
+            row(NSView(), augmentCB),
+            row(NSView(), augmentHint),
             row(mhLabel, mhField, mhStepper, mhHint),
         ]
         let stack = NSStackView(views: rows)
@@ -167,6 +181,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     @objc private func togglePasteOnSelect() {
         prefs.pasteOnSelect = (pasteOnSelectCheckbox.state == .on)
+    }
+
+    @objc private func toggleAugmentFileCopies() {
+        prefs.augmentFileCopiesWithPath = (augmentFileCopiesCheckbox.state == .on)
     }
 
     @objc private func toggleLaunchAtLogin() {

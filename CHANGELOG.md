@@ -1,5 +1,59 @@
 # Changelog
 
+## 1.7.0 — 2026-05-11
+
+Copying a file now does the right thing in *both* text and file-accepting
+paste targets — simultaneously. The Claude desktop app was the
+motivating case: pasting a copied file in the **code tab** now yields
+the full file path; pasting the same copied file in the **chat tab**
+attaches the file itself. No app detection, no mode switching, no
+clipboard rewriting at paste time — both representations live on the
+pasteboard together and the receiving control picks whichever type it
+wants.
+
+### How
+
+macOS Finder's "copy a file" produces a pasteboard with
+`public.file-url` and a handful of legacy URL/filename types, but
+**no `public.utf8-plain-text`**. Pasting in a code editor therefore
+gets nothing useful, or just the filename via OS fallback.
+
+`ClipboardMonitor.augmentFileURLsIfNeeded()` now intercepts these
+file-only pasteboards. When a fresh file copy lands and there's no
+usable string representation, Multipaste snapshots every existing
+type's data, clears the pasteboard, re-declares all types plus
+`.string`, writes the saved data back, and adds the full path
+(newline-joined for multi-file copies) as the string.
+
+Result:
+
+- Text-only consumers (code editors, terminals, search fields) → path
+- File-URL consumers (chat composers, image editors, Finder) → file
+
+Both at the same time, from a single ⌘C.
+
+### What's added
+
+- **`MultipasteCore/PasteboardAugmenter`** — pure `pathText(forFiles:)`
+  and `shouldAugment(existing:)` helpers. 7 new unit tests covering
+  single/multi/empty file lists, nil/empty/whitespace-only existing
+  strings, and the "don't clobber real text" guarantee.
+- **`Preferences.augmentFileCopiesWithPath`** (default ON, persisted in
+  `~/Library/Preferences/com.rohin.multipaste.plist`).
+- **Settings → General**: new "Add file path as text on file copies"
+  checkbox with explanatory hint.
+- Test count: **69** (was 62).
+
+### Trade-off documented
+
+The augmentation bumps `changeCount` by one (because we have to
+`clearContents()` + re-declare types to inject a new representation on
+an Apple-owned pasteboard). Multipaste's own next poll dedupes via
+`contentHash`, so the history list doesn't double-up. Other clipboard
+managers running concurrently might briefly see a "new" copy event;
+this is the only way to add a representation to a pasteboard you don't
+own.
+
 ## 1.6.1 — 2026-05-11
 
 Hotfix: 1.6.0 froze before its main loop ever started.

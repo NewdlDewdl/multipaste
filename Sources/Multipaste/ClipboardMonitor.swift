@@ -14,13 +14,15 @@ final class ClipboardMonitor {
     private var lastChangeCount: Int
     private var timer: DispatchSourceTimer?
     private let store: HistoryStore
+    private let prefs: Preferences
 
     /// When true, the monitor still tracks `changeCount` (so it doesn't
     /// double-fire on resume) but skips inserting into history.
     var paused: Bool = false
 
-    init(store: HistoryStore) {
+    init(store: HistoryStore, prefs: Preferences) {
         self.store = store
+        self.prefs = prefs
         self.lastChangeCount = pasteboard.changeCount
     }
 
@@ -45,6 +47,62 @@ final class ClipboardMonitor {
         guard !paused else { return }
         guard let item = snapshot() else { return }
         store.insert(item)
+        augmentFileURLsIfNeeded(item: item)
+    }
+
+    /// When the user copies a file in Finder, the pasteboard carries
+    /// `public.file-url` (and a few legacy URL types) but NO
+    /// `public.utf8-plain-text`. Pasting into a code editor / terminal /
+    /// search field therefore yields nothing useful — or, depending on
+    /// the receiver's fallback logic, just the filename.
+    ///
+    /// We inject the full path as the `.string` representation while
+    /// preserving every other type. Receivers pick whichever type they
+    /// want:
+    ///
+    ///   - text controls (code tab) → string → path
+    ///   - drop targets (chat tab) → file-url → the file itself
+    ///
+    /// Disabled via Preferences if a user prefers the old behavior.
+    private func augmentFileURLsIfNeeded(item: ClipboardItem) {
+        guard prefs.augmentFileCopiesWithPath else { return }
+        guard case .fileURLs(let urls) = item.kind, !urls.isEmpty else { return }
+
+        let existing = pasteboard.string(forType: .string)
+        guard PasteboardAugmenter.shouldAugment(existing: existing) else { return }
+
+        let pathText = PasteboardAugmenter.pathText(forFiles: urls)
+        rewritePreservingTypes(addingString: pathText)
+        // We just bumped changeCount; mark it as "ours" so our next poll
+        // doesn't see this as a brand-new clipboard event.
+        lastChangeCount = pasteboard.changeCount
+    }
+
+    /// Snapshot every existing type's data, clear the pasteboard, then
+    /// re-declare all original types PLUS `.string` and write the data
+    /// back. This is the only way to add a representation on top of an
+    /// Apple-owned pasteboard (e.g. one set by Finder) without losing
+    /// the original types — `addTypes(_:owner:)` requires us to be the
+    /// pasteboard owner, which we aren't.
+    private func rewritePreservingTypes(addingString string: String) {
+        let originalTypes = pasteboard.types ?? []
+        var saved: [(NSPasteboard.PasteboardType, Data)] = []
+        for type in originalTypes {
+            if let data = pasteboard.data(forType: type) {
+                saved.append((type, data))
+            }
+        }
+
+        pasteboard.clearContents()
+        var declaredTypes = originalTypes
+        if !declaredTypes.contains(.string) {
+            declaredTypes.append(.string)
+        }
+        pasteboard.declareTypes(declaredTypes, owner: nil)
+        for (type, data) in saved {
+            pasteboard.setData(data, forType: type)
+        }
+        pasteboard.setString(string, forType: .string)
     }
 
     /// Read whatever's currently on the pasteboard and turn it into a

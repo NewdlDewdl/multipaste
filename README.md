@@ -13,8 +13,8 @@ No subscriptions, no Electron, no telemetry, no account. ~700 KB of
 native Swift in a 440 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
 starts at login.
 
-**Latest release:** [v1.6.1](https://github.com/NewdlDewdl/multipaste/releases/latest)
-&nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 62 unit tests
+**Latest release:** [v1.7.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+&nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 69 unit tests
 &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
@@ -23,7 +23,7 @@ starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-1.6.1.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-1.7.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (~420 KB).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
@@ -82,6 +82,28 @@ In the picker:
 | type anything      | Filter the history (case-insensitive)         |
 
 The default global hotkey is `⌘⇧V`. Change it in **Preferences → General → Hotkey**.
+
+---
+
+## File copy → path text *and* file upload
+
+Copy any file in Finder. Multipaste augments the pasteboard so:
+
+- Pasting in **Claude's code tab** (or any text editor / terminal /
+  search field) yields the **full file path**.
+- Pasting in **Claude's chat tab** (or any drop target) uploads the
+  **file itself**.
+
+Both at the same time, from a single ⌘C. No app detection, no mode
+switching. The receiving control picks whichever pasteboard type it
+prefers — Multipaste just makes sure both are available.
+
+**How it works**: Finder's file copy carries `public.file-url` and
+legacy URL types but no `public.utf8-plain-text`. Multipaste detects
+this case and adds the path as the string representation, preserving
+every other type. Toggle off in **Preferences → General → "Add file
+path as text on file copies"** if you'd rather have the historical
+"empty string on file copy" behavior.
 
 ---
 
@@ -388,7 +410,8 @@ Coverage:
 | `SnippetMatcher`       | 11    | terminators, longest-match, unpinned skip, no-substring false-positive, char-count math |
 | `SemanticVersion`      | 11    | v-prefix, garbage rejection, two-component rejection, ordering with double-digit components |
 | `UpdateChecker`        | 6     | up-to-date, update-available, downgrade ignored, skipped-version, GitHub JSON parse, error on missing fields |
-| **Total**              | **62**| Pure logic; UI is integration-tested manually          |
+| `PasteboardAugmenter`  | 7     | path-text single/multi/empty, augment-when-nil/empty/whitespace, don't-clobber-real-text |
+| **Total**              | **69**| Pure logic; UI is integration-tested manually          |
 
 ---
 
