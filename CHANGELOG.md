@@ -103,7 +103,7 @@ standardized license at all and would surprise readers.
     Apache, and AGPL; lists patent/warranty caveats and the 32-day
     violation cure period.
 - **`CHANGELOG.md`** — this entry.
-- **`Tests/MultipasteCoreTests/LicenseTests.swift`** — 12 tests that
+- **`Tests/MultipasteCoreTests/LicenseTests.swift`** — 13 tests that
   lock the LICENSE.md down so this can't silently regress to MIT,
   AGPL, or PolyForm Noncommercial. They read the file at the package
   root and assert: file exists and is named `LICENSE.md` (with `.md`
@@ -118,8 +118,11 @@ standardized license at all and would surprise readers.
   leftover MIT permission grant, absence of any AGPL/GPL/Affero text,
   absence of PolyForm Noncommercial title (wrong PolyForm variant),
   absence of a stray bare-`LICENSE` file splitting the source of
-  truth, and line count in the 70–80 range.
-- Test count: **95** (was 83).
+  truth, line count in the 75–90 range, and the header's pointer at
+  CONTRIBUTING.md / the Contributor License Agreement.
+- Test count: **102** (was 83) — see also the new
+  `ContributionTests` suite documented under "Contribution
+  infrastructure" below.
 
 ### Compatibility
 
@@ -152,6 +155,63 @@ standardized license at all and would surprise readers.
   license. PolyForm Strict applies to 2.0.0 and later. If you need
   a permissive license, the 1.9.0 source is still on GitHub at the
   `v1.9.0` tag, MIT-licensed in perpetuity.
+
+### Contribution infrastructure (added post-relicense)
+
+PolyForm Strict's "Copyright License" clause forbids derivative works
+and distribution — which technically forbids the act of opening a PR
+(fork = distribute, modify = derivative work). To make contributions
+legally possible, the relicense ships with a complete contribution
+infrastructure built around a **Contributor License Agreement (CLA)**.
+This is the same pattern HashiCorp, Sentry, MongoDB, and other
+source-available projects use.
+
+- **`CONTRIBUTING.md`** — full CLA at the package root. Contributors
+  retain copyright in their contributions but grant the licensor a
+  perpetual, worldwide, royalty-free, irrevocable license to
+  reproduce, modify, distribute, sublicense, and — most importantly —
+  **relicense** the contribution under any future terms, including
+  fully proprietary closed-source. Also includes a one-time, scoped
+  reciprocal permission for the contributor to make the proposed
+  changes despite PolyForm Strict's general prohibition (the
+  mechanism that makes the PR legal at all). Plus patent grant,
+  representations, what kinds of contributions are welcome, and the
+  fork/branch/test/commit/PR workflow.
+- **`.github/PULL_REQUEST_TEMPLATE.md`** — auto-loaded by GitHub on
+  PR creation. Asks for summary / why / what-changed / testing, plus
+  5 CLA checkboxes the contributor must check (CONTRIBUTING.md read,
+  license grant, relicensing right specifically called out, entitled
+  to grant, no infringement). The relicensing checkbox is flagged as
+  "the unusual clause; please read it before checking the box."
+- **`.github/ISSUE_TEMPLATE/bug_report.md`** — auto-loaded for new
+  bug-report issues. Prompts for macOS version, Multipaste version,
+  install method (DMG / Homebrew / source), Apple Silicon or Intel,
+  steps to reproduce, log tail from
+  `~/Library/Logs/Multipaste/multipaste.log`, and screenshots.
+  Security issues are routed to email instead of public issues.
+- **`LICENSE.md` header** — gained a 6-line note pointing contributors
+  at CONTRIBUTING.md so they discover the CLA without hunting for it.
+  License body unchanged; PolyForm canonical text remains byte-for-byte.
+- **`README.md`** — new "Contributing" section after the License
+  section. Spells out the unusual-by-default CLA terms (perpetual /
+  irrevocable / relicensing right / one-time scoped permission to
+  contribute) so contributors aren't ambushed by the agreement.
+  Points at the bug-report template for issues.
+- **`Tests/MultipasteCoreTests/ContributionTests.swift`** — NEW
+  suite, 6 tests: `CONTRIBUTING.md` exists at package root; CLA
+  contains "perpetual / worldwide / royalty-free / irrevocable"
+  magic words; relicensing clause explicitly mentions "proprietary"
+  and "closed-source"; PolyForm Strict context is explained; PR
+  template exists, links to CONTRIBUTING.md, references CLA, has
+  checkboxes, and explicitly calls out the relicensing clause;
+  bug-report issue template exists with YAML front-matter, asks for
+  macOS and Multipaste versions.
+- **`Tests/MultipasteCoreTests/LicenseTests.swift`** — added
+  `License/hasContributionPointer` test asserting the LICENSE.md
+  header now references CONTRIBUTING.md and the Contributor License
+  Agreement. Also bumped `lineCountInExpectedRange` from 70–80 to
+  75–90 to accommodate the new 6-line contribution-pointer block.
+- Test count: **102** (was 95).
 
 The 1.9.0 → 2.0.0 release is otherwise feature-identical.
 

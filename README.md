@@ -15,7 +15,7 @@ starts at login.
 
 **Latest release:** [v2.0.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 95 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
+&nbsp;·&nbsp; **Tests:** 102 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
 
@@ -365,7 +365,7 @@ does not make network calls outside the once-a-day update check
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
   `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 62 unit tests live here.
+  All testable. 102 unit tests live here (incl. License + Contribution suites that lock down LICENSE.md and CONTRIBUTING.md).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -399,7 +399,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test            # runs all 62 unit tests in ~30 ms
+make test            # runs all 102 unit tests in ~70 ms
 ```
 
 Tests use a small custom harness
@@ -427,7 +427,9 @@ Coverage:
 | `TabNavigation`        | 9     | search→row, between-rows, clamp at last row, Shift+Tab edges, empty list, single-row, three-row full traversal |
 | `HistoryStore` (pinned-first) | 3 | pinnedFirst=false preserves recency, pinnedFirst=true hoists pinned, within-group order preserved |
 | `Preferences` (pinned-first)  | 2 | default false, persistence |
-| **Total**              | **83**| Pure logic; UI is integration-tested manually          |
+| `License`              | 13    | LICENSE.md path + `.md` extension regression-guard, PolyForm Strict 1.0.0 title + URL, project copyright header + commercial-license email, the Strict-defining no-distribution/no-derivatives clause, NC / Personal / NC-Org sections, Patent Defense, 32-day cure, warranty disclaimer, absence of MIT/AGPL/GPL/Affero, absence of PolyForm Noncommercial (wrong variant), absence of stray bare-LICENSE, line-count range, contribution pointer |
+| `Contribution`         | 6     | CONTRIBUTING.md exists, CLA contains perpetual/worldwide/royalty-free/irrevocable grant, relicensing-right clause explicitly mentions proprietary closed-source, PolyForm Strict context explained, PR template links to CLA + has confirmation checkboxes + calls out relicensing, bug-report issue template has front-matter + asks for macOS/Multipaste versions |
+| **Total**              | **102**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -478,7 +480,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 62 unit tests (~30 ms)
+make test          # run all 102 unit tests (~70 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -657,6 +659,40 @@ immediately terminates your patent license; ordinary violations have a
 
 Full text in [LICENSE.md](LICENSE.md). Canonical reference:
 <https://polyformproject.org/licenses/strict/1.0.0/>.
+
+---
+
+## Contributing
+
+**Yes, pull requests are welcome** — even though PolyForm Strict on
+its own forbids derivative works. The mechanism that makes this work
+is a [Contributor License Agreement
+(CLA)](CONTRIBUTING.md#contributor-license-agreement-cla) in
+[CONTRIBUTING.md](CONTRIBUTING.md). Opening a PR constitutes
+agreement with the CLA, which:
+
+- Grants the licensor (Rohin) a perpetual, worldwide, irrevocable,
+  royalty-free license to use, modify, distribute, and sublicense
+  your contribution.
+- Grants the licensor the right to **relicense** your contribution
+  under any future terms — including fully proprietary closed-source
+  — without coming back to you for permission. This is the unusual
+  clause; please read it before contributing.
+- Grants you (the contributor) a one-time, scoped permission to make
+  the changes in your PR despite PolyForm Strict's general
+  prohibition on derivative works.
+
+Before opening a PR, read [CONTRIBUTING.md](CONTRIBUTING.md) in full
+— it covers the CLA, what kinds of contributions are welcome (bug
+fixes, perf improvements, doc fixes, test coverage, accessibility),
+what is *not* welcome (telemetry, new dependencies, wholesale
+redesigns), build/test commands, commit-message style, and the PR
+workflow.
+
+Bug reports: open an issue using the
+[bug-report template](.github/ISSUE_TEMPLATE/bug_report.md). For
+security issues, do NOT open a public issue — email
+<rohin.agrawal@gmail.com> directly.
 
 ---
 

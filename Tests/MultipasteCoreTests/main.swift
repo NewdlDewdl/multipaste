@@ -9,5 +9,6 @@ UpdateCheckerTests.registerAll()
 PasteboardAugmenterTests.registerAll()
 TabNavigationTests.registerAll()
 LicenseTests.registerAll()
+ContributionTests.registerAll()
 
 exit(Int32(runAllTests()))

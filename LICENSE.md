@@ -12,6 +12,12 @@ separate written license from the author.
 
 For commercial licensing inquiries, contact: rohin.agrawal@gmail.com
 
+Contributions (pull requests, patches, etc.) are accepted under the
+Contributor License Agreement in CONTRIBUTING.md at the repository
+root. The CLA grants the licensor a perpetual, irrevocable license to
+your contribution including the right to relicense it under any
+future terms.
+
 ================================================================================
 
 # PolyForm Strict License 1.0.0

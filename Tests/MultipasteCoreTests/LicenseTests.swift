@@ -36,6 +36,7 @@ enum LicenseTests {
         TestRegistry.register("License/isStrictNotPolyFormNoncommercial", isStrictNotPolyFormNoncommercial)
         TestRegistry.register("License/hasNoStaleMITorAGPLText", hasNoStaleMITorAGPLText)
         TestRegistry.register("License/lineCountInExpectedRange", lineCountInExpectedRange)
+        TestRegistry.register("License/hasContributionPointer", hasContributionPointer)
     }
 
     // The package root is two directories above this test file:
@@ -178,14 +179,27 @@ enum LicenseTests {
                    "LICENSE.md still references GPL")
     }
 
-    // Project header (14 lines) + blank (1) + separator (1) + blank (1) +
-    // PolyForm Strict canonical (59 lines) ≈ 76 lines (give or take final
-    // newline). Allow 70–80 to catch wholesale truncation or duplication
-    // without being so tight that minor whitespace tweaks break the test.
+    // Project header (~20 lines including contribution-pointer block) +
+    // separator (1) + PolyForm Strict canonical (59 lines) ≈ 81 lines
+    // (give or take final newline). Allow 75–90 to catch wholesale
+    // truncation or duplication without being so tight that header
+    // tweaks break the test.
     static func lineCountInExpectedRange() throws {
         let text = try readLicense()
         let count = text.components(separatedBy: "\n").count
-        try expect(count >= 70 && count <= 80,
-                   "LICENSE.md line count \(count) outside expected 70–80 range")
+        try expect(count >= 75 && count <= 90,
+                   "LICENSE.md line count \(count) outside expected 75–90 range")
+    }
+
+    // The project copyright header points contributors at CONTRIBUTING.md
+    // so they discover the CLA without having to find it themselves.
+    // PolyForm Strict otherwise forbids derivative works; the CLA is what
+    // makes contributions legal at all.
+    static func hasContributionPointer() throws {
+        let text = try readLicense()
+        try expect(text.contains("CONTRIBUTING.md"),
+                   "LICENSE.md header missing pointer to CONTRIBUTING.md")
+        try expect(text.contains("Contributor License Agreement"),
+                   "LICENSE.md header missing reference to the Contributor License Agreement")
     }
 }
