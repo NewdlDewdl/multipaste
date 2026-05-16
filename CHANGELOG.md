@@ -251,7 +251,17 @@ Added:
   the canonical `https://polyformproject.org/strict.png` URL,
   linking to <https://polyformproject.org/licenses/strict/1.0.0/>.
   Same badge the PolyForm Project uses on its own licenses
-  comparison page.
+  comparison page. Placed inside the **License section** (not in
+  the intro header) with `width="80"` and `align="right"` so it's
+  contextual polish — credit to the PolyForm Project + a working
+  click-through to the canonical license page — without being a
+  giant intimidating "STRICT" wall above the install instructions.
+  An iteration-1 placement at the top of the README was caught as
+  intimidating to non-developer users browsing the repo to download
+  a clipboard manager, and moved. A regression test
+  (`LicensingMetadata/readmeBadgeIsNotInIntroHeader`) asserts the
+  badge URL doesn't appear in the first 30 lines of README.md, so
+  it can't silently migrate back upward.
 
 Modified:
 

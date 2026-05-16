@@ -39,6 +39,7 @@ enum LicensingMetadataTests {
         TestRegistry.register("LicensingMetadata/packageSwiftHasSPDXHeader", packageSwiftHasSPDXHeader)
         TestRegistry.register("LicensingMetadata/readmeHasPolyFormBadge", readmeHasPolyFormBadge)
         TestRegistry.register("LicensingMetadata/readmeReferencesCanonicalPolyFormURL", readmeReferencesCanonicalPolyFormURL)
+        TestRegistry.register("LicensingMetadata/readmeBadgeIsNotInIntroHeader", readmeBadgeIsNotInIntroHeader)
     }
 
     private static var packageRoot: URL {
@@ -198,5 +199,22 @@ enum LicensingMetadataTests {
         let text = try read("README.md")
         try expect(text.contains(polyformCanonicalURL),
                    "README.md missing canonical PolyForm Strict URL \(polyformCanonicalURL)")
+    }
+
+    // UX guard: the canonical PolyForm Strict logo renders as a large
+    // bold "STRICT" image. If it lands above the install instructions
+    // it looks intimidating to non-developer users browsing the repo
+    // for a clipboard manager, killing conversion. The badge belongs
+    // in the License section deep in the doc — same adopter signal,
+    // contextually appropriate placement. This test ensures the badge
+    // URL is in the README but NOT in the first 30 lines (which would
+    // place it before/around the Install section).
+    static func readmeBadgeIsNotInIntroHeader() throws {
+        let text = try read("README.md")
+        let head = text.components(separatedBy: "\n").prefix(30).joined(separator: "\n")
+        try expect(!head.contains(polyformBadgeURL),
+                   "PolyForm Strict badge image appears in the first 30 lines of README.md — moves users off before they see the install instructions. Move it to the License section.")
+        // Sanity: it must still be somewhere — readmeHasPolyFormBadge
+        // ensures that; this test just enforces placement.
     }
 }
