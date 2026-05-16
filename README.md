@@ -14,8 +14,8 @@ native Swift in a 440 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
 starts at login.
 
 **Latest release:** [v2.0.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
-&nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 94 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
+&nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
+&nbsp;·&nbsp; **Tests:** 95 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
 
@@ -436,7 +436,7 @@ Coverage:
 ```
 Package.swift
 Makefile
-README.md  LICENSE  CHANGELOG.md
+README.md  LICENSE.md  CHANGELOG.md
 
 Sources/
   MultipasteCore/      ← testable, pure Swift:
@@ -592,7 +592,7 @@ pattern in `SingleInstance` was missed until 1.6.1.
 
 ## License
 
-[PolyForm Strict License 1.0.0](LICENSE) — source-available,
+[PolyForm Strict License 1.0.0](LICENSE.md) — source-available,
 noncommercial only. **Multipaste is NOT open source** in the OSI sense.
 
 The PolyForm family of licenses lives at
@@ -651,11 +651,11 @@ that call later.
 
 **Patent grant + patent-defense + warranty disclaimer:** see the
 "Patent License," "Patent Defense," and "No Liability" sections of the
-LICENSE file. Notable: filing a patent claim against Multipaste
+LICENSE.md file. Notable: filing a patent claim against Multipaste
 immediately terminates your patent license; ordinary violations have a
 32-day cure period before all licenses terminate.
 
-Full text in [LICENSE](LICENSE). Canonical reference:
+Full text in [LICENSE.md](LICENSE.md). Canonical reference:
 <https://polyformproject.org/licenses/strict/1.0.0/>.
 
 ---

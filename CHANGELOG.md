@@ -19,7 +19,7 @@ bump is honest signal that the legal posture has changed). Hence
 The MIT license used through 1.9.0 was a giveaway — anyone could
 embed Multipaste's combined clipboard-history + snippet-expansion
 engine into a closed-source product and resell it without
-attribution beyond the LICENSE notice. That's fine for a finished
+attribution beyond the LICENSE.md notice. That's fine for a finished
 hobby project; it's the wrong default while the option of turning
 Multipaste into a commercial product is still on the table.
 
@@ -58,14 +58,18 @@ standardized license at all and would surprise readers.
 
 ### What changed
 
-- **`LICENSE`** — replaced the 22-line MIT text with a 75-line LICENSE
-  file: a 14-line project copyright header (sets out commercial-licensing
-  contact and plain-English summary of the noncommercial restriction)
-  followed by the verbatim 59-line canonical PolyForm Strict 1.0.0
-  markdown from
+- **`LICENSE.md`** — replaced the 22-line MIT `LICENSE` (bare, no
+  extension) with a 75-line `LICENSE.md`: a 14-line project copyright
+  header (sets out commercial-licensing contact and plain-English summary
+  of the noncommercial restriction) followed by the verbatim 59-line
+  canonical PolyForm Strict 1.0.0 markdown from
   <https://github.com/polyformproject/polyform-licenses/blob/1.0.0/PolyForm-Strict-1.0.0.md>.
   The license body is byte-for-byte identical to the PolyForm canonical
-  text.
+  text. The `.md` extension matters: PolyForm canonical text uses
+  markdown (headings, autolinks, emphasis), and only with the `.md`
+  extension will GitHub and other viewers render it as formatted text
+  instead of showing raw `#`/`##`/`**` syntax. PolyForm's own guidance
+  also recommends `LICENSE.md`.
 - **`Resources/Info.plist`** — `CFBundleShortVersionString` bumped to
   `2.0.0`, `CFBundleVersion` to `15`. `NSHumanReadableCopyright` now
   reads `Copyright © 2026 Rohin Agrawal. Source-available under the
@@ -99,20 +103,23 @@ standardized license at all and would surprise readers.
     Apache, and AGPL; lists patent/warranty caveats and the 32-day
     violation cure period.
 - **`CHANGELOG.md`** — this entry.
-- **`Tests/MultipasteCoreTests/LicenseTests.swift`** — 11 tests that
-  lock the LICENSE down so this can't silently regress to MIT, AGPL,
-  or PolyForm Noncommercial. They read the file at the package root
-  and assert: PolyForm Strict 1.0.0 title, canonical PolyForm URL,
-  project copyright header with commercial-license contact, the
-  "Copyright License" clause's verbatim "other than distributing the
-  software or making changes" language (the Strict-defining no-
-  distribution/no-derivatives clause), the "Noncommercial Purposes"
-  clause, the Patent Defense clause, the 32-day cure period, the
-  "No Liability" warranty disclaimer, absence of any leftover MIT
-  permission grant, absence of any AGPL/GPL/Affero text, absence of
-  PolyForm Noncommercial title (which would be the wrong PolyForm
-  variant), and line count in the 70–80 range.
-- Test count: **94** (was 83).
+- **`Tests/MultipasteCoreTests/LicenseTests.swift`** — 12 tests that
+  lock the LICENSE.md down so this can't silently regress to MIT,
+  AGPL, or PolyForm Noncommercial. They read the file at the package
+  root and assert: file exists and is named `LICENSE.md` (with `.md`
+  extension — regression-tested), PolyForm Strict 1.0.0 title,
+  canonical PolyForm URL, project copyright header with commercial-
+  license contact, the "Copyright License" clause's verbatim "other
+  than distributing the software or making changes" language (the
+  Strict-defining no-distribution/no-derivatives clause), the
+  "Noncommercial Purposes" / "Personal Uses" / "Noncommercial
+  Organizations" sections, the Patent Defense clause, the 32-day cure
+  period, the "No Liability" warranty disclaimer, absence of any
+  leftover MIT permission grant, absence of any AGPL/GPL/Affero text,
+  absence of PolyForm Noncommercial title (wrong PolyForm variant),
+  absence of a stray bare-`LICENSE` file splitting the source of
+  truth, and line count in the 70–80 range.
+- Test count: **95** (was 83).
 
 ### Compatibility
 

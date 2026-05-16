@@ -1,14 +1,21 @@
 import Foundation
 
-// Verifies that the LICENSE file at the package root is the PolyForm Strict
-// 1.0.0 license — the most restrictive license in the PolyForm family —
-// with the project's copyright header preserved on top, and that no stale
-// MIT or AGPL text has slipped back in.
+// Verifies that the LICENSE.md file at the package root is the PolyForm
+// Strict 1.0.0 license — the most restrictive license in the PolyForm
+// family — with the project's copyright header preserved on top, and that
+// no stale MIT or AGPL text has slipped back in.
 //
 // Background: Multipaste 2.0.0 relicensed from MIT (1.0.0–1.9.0) directly
 // to PolyForm Strict. PolyForm Strict is source-available, NOT OSI open
 // source: noncommercial use is permitted, redistribution and derivative
 // works are not. The license-decision discussion lives in CHANGELOG.md.
+//
+// The file is named `LICENSE.md` (not bare `LICENSE`) because the
+// canonical PolyForm text is markdown — headings, links, emphasis — and
+// only the `.md` extension lets GitHub and other viewers render it as
+// formatted text instead of raw `#`/`##`/`**` syntax. PolyForm's own
+// guidance is to use `LICENSE.md`. The `fileNameHasMarkdownExtension`
+// test below locks this in.
 //
 // These tests run via the same harness as the rest of the suite
 // (`swift run -c debug MultipasteTests`). If you intentionally change the
@@ -18,6 +25,7 @@ enum LicenseTests {
 
     static func registerAll() {
         TestRegistry.register("License/fileExistsAtPackageRoot", fileExistsAtPackageRoot)
+        TestRegistry.register("License/fileNameHasMarkdownExtension", fileNameHasMarkdownExtension)
         TestRegistry.register("License/isPolyFormStrict_1_0_0", isPolyFormStrict_1_0_0)
         TestRegistry.register("License/hasProjectCopyrightHeaderWithCommercialContact", hasProjectCopyrightHeaderWithCommercialContact)
         TestRegistry.register("License/forbidsDistributionAndDerivatives", forbidsDistributionAndDerivatives)
@@ -31,7 +39,7 @@ enum LicenseTests {
     }
 
     // The package root is two directories above this test file:
-    //   Tests/MultipasteCoreTests/LicenseTests.swift → packageRoot/LICENSE
+    //   Tests/MultipasteCoreTests/LicenseTests.swift → packageRoot/LICENSE.md
     private static var packageRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()   // …/Tests/MultipasteCoreTests
@@ -40,7 +48,7 @@ enum LicenseTests {
     }
 
     private static var licenseURL: URL {
-        packageRoot.appendingPathComponent("LICENSE")
+        packageRoot.appendingPathComponent("LICENSE.md")
     }
 
     private static func readLicense(file: StaticString = #file, line: UInt = #line) throws -> String {
@@ -48,7 +56,7 @@ enum LicenseTests {
             return try String(contentsOf: licenseURL, encoding: .utf8)
         } catch {
             throw TestFailure(
-                message: "Failed to read LICENSE at \(licenseURL.path): \(error)",
+                message: "Failed to read LICENSE.md at \(licenseURL.path): \(error)",
                 file: file, line: line
             )
         }
@@ -56,25 +64,42 @@ enum LicenseTests {
 
     static func fileExistsAtPackageRoot() throws {
         try expect(FileManager.default.fileExists(atPath: licenseURL.path),
-                   "LICENSE not found at \(licenseURL.path)")
+                   "LICENSE.md not found at \(licenseURL.path)")
+    }
+
+    // PolyForm Strict canonical text uses markdown — headings (#, ##),
+    // autolinks (<https://…>), emphasis (**, ***). Without the .md
+    // extension, GitHub and most viewers render this raw, with `#` and
+    // `**` literally visible. This test prevents a bare `LICENSE` from
+    // sneaking back in.
+    static func fileNameHasMarkdownExtension() throws {
+        try expectEqual(licenseURL.lastPathComponent, "LICENSE.md",
+                        "License file should be named LICENSE.md (markdown extension required for PolyForm canonical text to render)")
+        try expectEqual(licenseURL.pathExtension, "md",
+                        "License file extension should be 'md'")
+        // Also guard against a stray bare-LICENSE file accidentally shipped
+        // alongside LICENSE.md — would split the source of truth.
+        let bare = packageRoot.appendingPathComponent("LICENSE")
+        try expect(!FileManager.default.fileExists(atPath: bare.path),
+                   "Both LICENSE and LICENSE.md exist at package root — split source of truth")
     }
 
     static func isPolyFormStrict_1_0_0() throws {
         let text = try readLicense()
         try expect(text.contains("PolyForm Strict License 1.0.0"),
-                   "LICENSE missing PolyForm Strict 1.0.0 title")
+                   "LICENSE.md missing PolyForm Strict 1.0.0 title")
         try expect(text.contains("polyformproject.org/licenses/strict/1.0.0"),
-                   "LICENSE missing canonical PolyForm Strict URL")
+                   "LICENSE.md missing canonical PolyForm Strict URL")
     }
 
     static func hasProjectCopyrightHeaderWithCommercialContact() throws {
         let text = try readLicense()
         try expect(text.contains("Copyright (c) 2026 Rohin Agrawal"),
-                   "LICENSE missing project copyright line")
+                   "LICENSE.md missing project copyright line")
         try expect(text.contains("Multipaste"),
-                   "LICENSE header missing project name")
+                   "LICENSE.md header missing project name")
         try expect(text.contains("rohin.agrawal@gmail.com"),
-                   "LICENSE header missing commercial-licensing contact email")
+                   "LICENSE.md header missing commercial-licensing contact email")
     }
 
     // The Strict-defining clause. PolyForm Noncommercial omits this last
@@ -83,57 +108,57 @@ enum LicenseTests {
     static func forbidsDistributionAndDerivatives() throws {
         let text = try readLicense()
         try expect(text.contains("other than distributing the software or making changes or new works based on the software"),
-                   "LICENSE missing Strict-defining \"no distribution / no derivatives\" clause")
+                   "LICENSE.md missing Strict-defining \"no distribution / no derivatives\" clause")
     }
 
     static func permitsNoncommercialUseExplicitly() throws {
         let text = try readLicense()
         try expect(text.contains("## Noncommercial Purposes"),
-                   "LICENSE missing \"Noncommercial Purposes\" section header")
+                   "LICENSE.md missing \"Noncommercial Purposes\" section header")
         try expect(text.contains("Any noncommercial purpose is a permitted purpose."),
-                   "LICENSE missing \"Noncommercial Purposes\" clause body")
+                   "LICENSE.md missing \"Noncommercial Purposes\" clause body")
         try expect(text.contains("## Personal Uses"),
-                   "LICENSE missing \"Personal Uses\" section")
+                   "LICENSE.md missing \"Personal Uses\" section")
         try expect(text.contains("## Noncommercial Organizations"),
-                   "LICENSE missing \"Noncommercial Organizations\" section")
+                   "LICENSE.md missing \"Noncommercial Organizations\" section")
     }
 
     static func hasPatentDefenseClause() throws {
         let text = try readLicense()
         try expect(text.contains("## Patent Defense"),
-                   "LICENSE missing \"Patent Defense\" section header")
+                   "LICENSE.md missing \"Patent Defense\" section header")
         try expect(text.contains("your patent license for the software granted under these terms ends immediately"),
-                   "LICENSE missing Patent Defense termination clause")
+                   "LICENSE.md missing Patent Defense termination clause")
     }
 
     static func has32DayViolationCurePeriod() throws {
         let text = try readLicense()
         try expect(text.contains("## Violations"),
-                   "LICENSE missing \"Violations\" section header")
+                   "LICENSE.md missing \"Violations\" section header")
         try expect(text.contains("within 32 days of receiving notice"),
-                   "LICENSE missing 32-day cure period for violations")
+                   "LICENSE.md missing 32-day cure period for violations")
     }
 
     static func hasNoLiabilityWarrantyDisclaimer() throws {
         let text = try readLicense()
         try expect(text.contains("## No Liability"),
-                   "LICENSE missing \"No Liability\" section header")
+                   "LICENSE.md missing \"No Liability\" section header")
         try expect(text.contains("the software comes as is"),
-                   "LICENSE missing \"comes as is\" warranty disclaimer")
+                   "LICENSE.md missing \"comes as is\" warranty disclaimer")
         try expect(text.contains("without any warranty or condition"),
-                   "LICENSE missing warranty disclaimer body")
+                   "LICENSE.md missing warranty disclaimer body")
     }
 
     // Guard against accidentally landing on the wrong PolyForm variant.
     // PolyForm Noncommercial allows derivative works — if we want maximum
     // restrictiveness, that's the wrong choice. This test will fail loudly
-    // if someone swaps "Strict" for "Noncommercial" in the LICENSE.
+    // if someone swaps "Strict" for "Noncommercial" in the LICENSE.md.
     static func isStrictNotPolyFormNoncommercial() throws {
         let text = try readLicense()
         try expect(!text.contains("PolyForm Noncommercial License"),
-                   "LICENSE has switched to PolyForm Noncommercial — wrong variant; project uses Strict")
+                   "LICENSE.md has switched to PolyForm Noncommercial — wrong variant; project uses Strict")
         try expect(!text.contains("polyformproject.org/licenses/noncommercial/"),
-                   "LICENSE references PolyForm Noncommercial URL — wrong variant")
+                   "LICENSE.md references PolyForm Noncommercial URL — wrong variant")
     }
 
     // Guards against partial overwrites or botched merges that leave behind
@@ -142,15 +167,15 @@ enum LicenseTests {
     static func hasNoStaleMITorAGPLText() throws {
         let text = try readLicense()
         try expect(!text.contains("Permission is hereby granted, free of charge"),
-                   "LICENSE still contains MIT permission grant")
+                   "LICENSE.md still contains MIT permission grant")
         try expect(!text.contains("MIT License"),
-                   "LICENSE still references MIT License")
+                   "LICENSE.md still references MIT License")
         try expect(!text.contains("GNU Affero General Public License"),
-                   "LICENSE still references AGPL")
+                   "LICENSE.md still references AGPL")
         try expect(!text.contains("GNU AFFERO GENERAL PUBLIC LICENSE"),
-                   "LICENSE still contains AGPL title")
+                   "LICENSE.md still contains AGPL title")
         try expect(!text.contains("GNU General Public License"),
-                   "LICENSE still references GPL")
+                   "LICENSE.md still references GPL")
     }
 
     // Project header (14 lines) + blank (1) + separator (1) + blank (1) +
@@ -161,6 +186,6 @@ enum LicenseTests {
         let text = try readLicense()
         let count = text.components(separatedBy: "\n").count
         try expect(count >= 70 && count <= 80,
-                   "LICENSE line count \(count) outside expected 70–80 range")
+                   "LICENSE.md line count \(count) outside expected 70–80 range")
     }
 }
