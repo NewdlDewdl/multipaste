@@ -13,9 +13,9 @@ No subscriptions, no Electron, no telemetry, no account. ~700 KB of
 native Swift in a 440 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
 starts at login.
 
-**Latest release:** [v1.9.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
-&nbsp;·&nbsp; **License:** MIT &nbsp;·&nbsp; **Tests:** 83 unit tests
-&nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
+**Latest release:** [v2.0.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+&nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE) (source-available, noncommercial)
+&nbsp;·&nbsp; **Tests:** 94 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
 
@@ -157,8 +157,8 @@ plain letters would be swallowed system-wide). Esc cancels recording.
 
 | | **Multipaste** | Maccy | Flycut | Paste | Pastebot | CopyClip 2 | Alfred | Raycast | Espanso |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| **Price** | 🆓 | 🆓 | 🆓 | $30/yr | $13 | Paid | £34+ | 🆓 (Pro $8+) | 🆓 |
-| **License** | MIT | MIT | MIT | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | GPL-3 |
+| **Price** | 🆓¹ | 🆓 | 🆓 | $30/yr | $13 | Paid | £34+ | 🆓 (Pro $8+) | 🆓 |
+| **License** | **PolyForm Strict**² | MIT | MIT | Proprietary | Proprietary | Proprietary | Proprietary | Proprietary | GPL-3 |
 | **Clipboard history** | ✓ | ✓ | text only | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ |
 | **Image capture** | ✓ | ✓ | ✗ | ✓ | ✓ | ✗ | ✓ | ✓ | n/a |
 | **Rich text (RTF)** | ✓ | ✓ | ✗ | ✓ | ✓ | ✗ | ✗ | ✓ | n/a |
@@ -173,15 +173,27 @@ plain letters would be swallowed system-wide). Esc cancels recording.
 | **Idle RAM** (approx) | **~50 MB** | ~80 MB | ~30 MB | ~150 MB | ~120 MB | ~60 MB | ~100 MB | ~250 MB | ~80 MB |
 | **Sign-in / account** | none | none | none | required | none | none | none | optional | none |
 | **Telemetry** | none | none | none | ? | ? | ? | none | yes | none |
-| **Open source** | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
+| **Open source** | src-avail² | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ | ✓ |
 
 **Why pick Multipaste:**
 - The only tool that combines clipboard history *and* trigger-based
   snippet expansion in one app. Maccy doesn't expand; Espanso doesn't
   remember.
-- Free + open source vs Paste / Pastebot / Alfred (paid) and
-  Raycast (closed-source, account, telemetry).
+- Free for personal use + source-available vs Paste / Pastebot / Alfred
+  (paid) and Raycast (closed-source + telemetry). Source is on GitHub,
+  read it, audit it, file issues against it.
 - Lightweight: ~50 MB RAM idle, ~700 KB binary, no helper processes.
+
+¹ Free for noncommercial use. Commercial use requires a separate license
+from the author — email <rohin.agrawal@gmail.com>.
+
+² PolyForm Strict 1.0.0 is a [source-available
+license](https://polyformproject.org/licenses/strict/1.0.0/), not OSI
+open source. Source is publicly visible and you may run Multipaste for
+any noncommercial purpose (personal, hobby, research, charity,
+education, government). Redistribution, modification, and commercial
+use are not permitted. See the [License](#license) section below for
+details.
 
 ---
 
@@ -580,8 +592,71 @@ pattern in `SingleInstance` was missed until 1.6.1.
 
 ## License
 
-[MIT](LICENSE). Use it, fork it, ship it inside your own app, sell it
-embedded in something — all fine.
+[PolyForm Strict License 1.0.0](LICENSE) — source-available,
+noncommercial only. **Multipaste is NOT open source** in the OSI sense.
+
+The PolyForm family of licenses lives at
+<https://polyformproject.org/>. Strict is the most restrictive
+permitted-use license in the family: noncommercial use is permitted,
+but redistribution and derivative works are not. Source is publicly
+visible so you can audit it, learn from it, file bug reports, and
+propose improvements — but the code itself remains under my sole
+control while I evaluate the path to a commercial product.
+
+**What you can do (no permission needed):**
+
+- **Run it for personal use** — including hobby projects, private
+  entertainment, study, religious observance, anything without
+  "anticipated commercial application."
+- **Run it inside a charity, school, public-research org, public-safety
+  org, environmental nonprofit, or government institution** —
+  PolyForm Strict explicitly lists these as permitted uses
+  ("Noncommercial Organizations" clause).
+- **Read the source** — it's on GitHub. Audit it. Learn from it.
+- **File issues, suggest features, report security bugs** — the issue
+  tracker is open.
+- **Exercise your fair-use rights** — the license does not limit them.
+
+**What you cannot do without a separate license:**
+
+- **Redistribute Multipaste** — neither the source nor the compiled
+  binary. The DMG download link must point at the official GitHub
+  Releases page. (Homebrew's cask formula is fine — it points users at
+  the official URL rather than redistributing the binary itself.)
+- **Modify the source for personal use and share the result.** Personal
+  modifications you keep to yourself aren't really exercised under the
+  copyright license, but conveying modifications to anyone else is not
+  permitted.
+- **Use it commercially** — selling it, embedding it in a product you
+  sell, deploying it on commercial infrastructure for revenue-
+  generating activity, etc. The "Noncommercial Purposes" clause is
+  exclusive: anything with "anticipated commercial application" is
+  outside the grant.
+- **Fork it as a competing product** — PolyForm Strict explicitly
+  forbids derivative works.
+
+**Why this license, and not MIT / Apache / AGPL?**
+
+This project may eventually become a commercial product. PolyForm
+Strict preserves that path: I retain all commercial rights, the source
+stays visible (which is good for trust, transparency, and personal
+users), and I can relicense future versions under any terms — including
+fully proprietary, closed-source — because I am the sole copyright
+holder. MIT or Apache would have given the code away; AGPL would have
+required anyone embedding it (including me, in a future product) to
+release downstream source. PolyForm Strict gives me the freedom to make
+that call later.
+
+**Commercial license inquiries:** <rohin.agrawal@gmail.com>.
+
+**Patent grant + patent-defense + warranty disclaimer:** see the
+"Patent License," "Patent Defense," and "No Liability" sections of the
+LICENSE file. Notable: filing a patent claim against Multipaste
+immediately terminates your patent license; ordinary violations have a
+32-day cure period before all licenses terminate.
+
+Full text in [LICENSE](LICENSE). Canonical reference:
+<https://polyformproject.org/licenses/strict/1.0.0/>.
 
 ---
 

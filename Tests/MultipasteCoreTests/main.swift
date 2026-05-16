@@ -8,5 +8,6 @@ SemanticVersionTests.registerAll()
 UpdateCheckerTests.registerAll()
 PasteboardAugmenterTests.registerAll()
 TabNavigationTests.registerAll()
+LicenseTests.registerAll()
 
 exit(Int32(runAllTests()))

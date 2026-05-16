@@ -332,7 +332,9 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             • Honors org.nspasteboard.* privacy markers — password
               managers are excluded automatically.
 
-            Made for Rohin.  MIT licensed.
+            Made for Rohin.  Source-available under PolyForm Strict 1.0.0.
+            Noncommercial use only — commercial licensing on request.
+            Source: https://github.com/NewdlDewdl/multipaste
             """)
         body.font = .systemFont(ofSize: 12)
         body.textColor = .labelColor

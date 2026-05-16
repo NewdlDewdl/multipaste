@@ -1,5 +1,153 @@
 # Changelog
 
+## 2.0.0 — 2026-05-16
+
+Relicensed from MIT to **PolyForm Strict License 1.0.0** — the most
+restrictive license in the
+[PolyForm](https://polyformproject.org/) family of source-available
+licenses. Source remains publicly visible; commercial use, distribution,
+and derivative works now require a separate written license from the
+author.
+
+This is a **breaking change** for any commercial user of Multipaste
+(which, to my knowledge, is currently nobody — but the major version
+bump is honest signal that the legal posture has changed). Hence
+1.9.0 → **2.0.0**, not 1.10.0.
+
+### Why this license
+
+The MIT license used through 1.9.0 was a giveaway — anyone could
+embed Multipaste's combined clipboard-history + snippet-expansion
+engine into a closed-source product and resell it without
+attribution beyond the LICENSE notice. That's fine for a finished
+hobby project; it's the wrong default while the option of turning
+Multipaste into a commercial product is still on the table.
+
+Three licenses were considered and rejected before landing on
+PolyForm Strict:
+
+- **MIT (status quo)** — too permissive; gives away every commercial
+  right. Rejected: preserves no path to a paid future product.
+- **GNU AGPL-3.0-or-later** — strongest standard copyleft, network-use
+  clause closes the SaaS loophole. Rejected: still allows competing
+  commercial forks (as long as they ship source under AGPL too), and
+  would force *my own* future commercial product to be AGPL —
+  defeating the point of the option I want to preserve.
+- **PolyForm Noncommercial 1.0.0** — noncommercial use with
+  derivatives permitted. Rejected: PolyForm Strict is strictly tighter
+  (no derivative works at all) and there is no reason to give away the
+  derivative right when the goal is maximum lockdown short of going
+  fully proprietary.
+
+**PolyForm Strict 1.0.0** is the answer because it:
+
+1. Restricts use to noncommercial purposes only — personal, hobby,
+   research, charity, education, government.
+2. Forbids derivative works and redistribution entirely, even
+   noncommercial ones, by anyone but the licensor.
+3. Keeps source publicly visible — users, security researchers, and
+   curious engineers can audit every line.
+4. Preserves the path to going fully proprietary: as sole copyright
+   holder I can release any future version under any license,
+   including a closed-source commercial EULA, without permission from
+   anyone.
+
+It is the most restrictive recognized source-available license
+short of "all rights reserved with public source," which is not a
+standardized license at all and would surprise readers.
+
+### What changed
+
+- **`LICENSE`** — replaced the 22-line MIT text with a 75-line LICENSE
+  file: a 14-line project copyright header (sets out commercial-licensing
+  contact and plain-English summary of the noncommercial restriction)
+  followed by the verbatim 59-line canonical PolyForm Strict 1.0.0
+  markdown from
+  <https://github.com/polyformproject/polyform-licenses/blob/1.0.0/PolyForm-Strict-1.0.0.md>.
+  The license body is byte-for-byte identical to the PolyForm canonical
+  text.
+- **`Resources/Info.plist`** — `CFBundleShortVersionString` bumped to
+  `2.0.0`, `CFBundleVersion` to `15`. `NSHumanReadableCopyright` now
+  reads `Copyright © 2026 Rohin Agrawal. Source-available under the
+  PolyForm Strict License 1.0.0. Noncommercial use only; commercial
+  licensing: rohin.agrawal@gmail.com`. Surfaces in Finder Get Info and
+  in About dialogs.
+- **`Sources/MultipasteCore/Version.swift`** — `1.9.0` → `2.0.0`.
+- **`Sources/Multipaste/SettingsWindowController.swift`** — the About
+  tab footer was `Made for Rohin. MIT licensed.`; now reads
+  `Made for Rohin. Source-available under PolyForm Strict 1.0.0.
+  Noncommercial use only — commercial licensing on request.` plus
+  the source-repo URL.
+- **`README.md`** —
+  - Header badge: `v2.0.0` and `License: PolyForm Strict 1.0.0
+    (source-available, noncommercial)`.
+  - Comparison-table License row: Multipaste column flips from
+    `MIT` to `**PolyForm Strict**²` with footnote.
+  - Comparison-table "Open source" row: Multipaste column changes
+    from `✓` to `src-avail²` — honest about not being OSI-approved
+    open source.
+  - Two footnotes added under the table: one explaining noncommercial
+    pricing (and the commercial-licensing email), one explaining
+    PolyForm Strict's source-available-but-not-open-source status.
+  - "Why pick Multipaste" bullet: `Free + open source` → `Free for
+    personal use + source-available`.
+  - Full License section rewritten: enumerates the five things you
+    *can* do (personal use, noncommercial-org use, source reading,
+    issue filing, fair use) and the four things you *cannot* do
+    (redistribute, distribute modifications, commercial use, fork as
+    competitor); explains why this license was chosen over MIT,
+    Apache, and AGPL; lists patent/warranty caveats and the 32-day
+    violation cure period.
+- **`CHANGELOG.md`** — this entry.
+- **`Tests/MultipasteCoreTests/LicenseTests.swift`** — 11 tests that
+  lock the LICENSE down so this can't silently regress to MIT, AGPL,
+  or PolyForm Noncommercial. They read the file at the package root
+  and assert: PolyForm Strict 1.0.0 title, canonical PolyForm URL,
+  project copyright header with commercial-license contact, the
+  "Copyright License" clause's verbatim "other than distributing the
+  software or making changes" language (the Strict-defining no-
+  distribution/no-derivatives clause), the "Noncommercial Purposes"
+  clause, the Patent Defense clause, the 32-day cure period, the
+  "No Liability" warranty disclaimer, absence of any leftover MIT
+  permission grant, absence of any AGPL/GPL/Affero text, absence of
+  PolyForm Noncommercial title (which would be the wrong PolyForm
+  variant), and line count in the 70–80 range.
+- Test count: **94** (was 83).
+
+### Compatibility
+
+- **For personal users / hobbyists / researchers / charities /
+  schools / governments**: no change — Multipaste is still free and
+  the binary still works the same. Download the DMG, install via
+  Homebrew, run it. The PolyForm Strict "Personal Uses" and
+  "Noncommercial Organizations" clauses explicitly cover all these
+  cases.
+- **For anyone using Multipaste at a for-profit company**: this is a
+  breaking change. You can still run the personal-use installation on
+  your own machine for non-work activity, but using Multipaste as part
+  of your job at a commercial entity is no longer permitted under the
+  default license. Email <rohin.agrawal@gmail.com> for a commercial
+  license; pricing TBD.
+- **For redistributors / forkers / re-packagers**: this is a breaking
+  change. PolyForm Strict forbids redistribution and derivative works
+  entirely. The official distribution channels are GitHub Releases and
+  the `NewdlDewdl/multipaste` Homebrew tap, both of which point at the
+  original binary; no mirrors, no forks, no patched builds may be
+  published.
+- **Homebrew tap**: still works. The cask recipe points users at the
+  official GitHub Releases URL — it's metadata, not redistribution.
+- **GitHub source visibility**: still public. PolyForm Strict is
+  source-available; reading the source on github.com is not
+  redistribution, and forking the repo on GitHub for personal study is
+  covered by the "Personal Uses" clause as long as you don't publish
+  modifications.
+- **Previous releases (≤1.9.0)**: remain under their original MIT
+  license. PolyForm Strict applies to 2.0.0 and later. If you need
+  a permissive license, the 1.9.0 source is still on GitHub at the
+  `v1.9.0` tag, MIT-licensed in perpetuity.
+
+The 1.9.0 → 2.0.0 release is otherwise feature-identical.
+
 ## 1.9.0 — 2026-05-11
 
 Makes pinning visible. Same semantics — different feel.
