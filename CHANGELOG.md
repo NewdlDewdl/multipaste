@@ -1,5 +1,107 @@
 # Changelog
 
+## 2.0.2 — 2026-05-16
+
+Hotfix: the **in-DMG `READ ME FIRST.txt`** told users to double-click
+Multipaste on first launch — which doesn't work for an ad-hoc-signed
+app downloaded from the internet.
+
+### The bug
+
+Multipaste is ad-hoc signed (no Apple Developer ID — we'd need a $99/yr
+Apple Developer Program membership for that). Apps without Developer ID
+signing trigger Gatekeeper on first launch. When a user double-clicks
+the app, macOS shows:
+
+> "Multipaste cannot be opened because the developer cannot be verified."
+>
+> [Cancel] [Move to Bin]
+
+**There is no Open button.** The user is stuck — they have to know the
+control-click → Open workaround that produces a different dialog:
+
+> "macOS cannot verify the developer of 'Multipaste'. Are you sure you
+> want to open it?"
+>
+> [Cancel] [**Open**]
+
+The in-DMG README's step 2 said "double-click", and step 3 then
+described the Open button — but those two steps are mutually exclusive
+flows. A user following the steps as written would get stuck at step 2.
+
+The main `README.md` had the correct control-click instructions; only
+the in-DMG README was wrong. (The main README's audience already has
+GitHub open, so they typically didn't hit the bug.)
+
+### The fix
+
+`scripts/dmg.sh` rewrites the `READ ME FIRST.txt` heredoc with the
+accurate Gatekeeper flow:
+
+```
+3. CONTROL-CLICK (or right-click) on Multipaste, then choose Open.
+   macOS will ask "macOS cannot verify the developer of 'Multipaste'.
+   Are you sure you want to open it?" — click Open.
+
+   Why not just double-click on first launch? Double-clicking a
+   downloaded app that isn't signed by an Apple-registered developer
+   shows a dialog with NO Open button — just Cancel and Move to Bin.
+   The control-click route is the standard Gatekeeper bypass for
+   indie apps. You only do this once; every subsequent launch is an
+   ordinary double-click.
+
+   If control-click → Open doesn't show an Open button (this can
+   happen on some macOS 15 Sequoia configurations): open System
+   Settings → Privacy & Security → scroll to the bottom → click
+   "Open Anyway" next to "Multipaste was blocked...".
+```
+
+Also expanded step 4 to walk through the Welcome window's Login Item +
+Accessibility flow, and added a Homebrew-users note ("`brew install
+--cask` removes the quarantine flag, so you can skip step 3 entirely").
+
+### What changed
+
+- **`scripts/dmg.sh`** — `READ ME FIRST.txt` heredoc rewritten with
+  the accurate control-click instructions + macOS 15 Sequoia fallback
+  + Homebrew-skip-step-3 note.
+- **`Sources/MultipasteCore/Version.swift`** — 2.0.1 → 2.0.2.
+- **`Resources/Info.plist`** — `CFBundleShortVersionString` 2.0.1 →
+  2.0.2, `CFBundleVersion` 16 → 17.
+- **`README.md`** — hero CTA: `↓ Download v2.0.2 (universal — Intel
+  + Apple Silicon)`. Easy-install link points at `Multipaste-2.0.2.dmg`.
+  Latest-release badge bumped to v2.0.2. The Easy-install section's
+  control-click instructions were already correct in v2.0.1 — no
+  change needed there.
+- **`Tests/MultipasteCoreTests/BuildScriptTests.swift`** — suite
+  grew 2 → 4 tests. New: `dmgReadmeUsesControlClickNotDoubleClick`
+  locates the `READ ME FIRST.txt` heredoc in `scripts/dmg.sh` and
+  asserts it mentions control-click / right-click, references the
+  Open button, and does NOT instruct users to "double-click
+  Multipaste" as the first-launch action. New:
+  `dmgReadmeMentionsSystemSettingsFallback` asserts the heredoc
+  mentions System Settings → Privacy & Security as the macOS 15
+  Sequoia fallback.
+- **`CHANGELOG.md`** — this entry.
+
+### Compatibility
+
+- **Anyone installing from the v2.0.2 DMG** — the in-DMG README is
+  now accurate. Control-click → Open on first launch, double-click
+  every time after.
+- **Apple Silicon + Intel users** — unchanged from v2.0.1's universal
+  binary. v2.0.2 is also a universal DMG.
+- **Homebrew users** — unchanged. `brew install --cask
+  NewdlDewdl/multipaste/multipaste` continues to remove the
+  quarantine flag automatically, so Gatekeeper doesn't trigger and
+  step 3 is skipped entirely. `brew upgrade --cask multipaste`
+  pulls v2.0.2 after your next `brew update`.
+
+Test count: **144** (was 142). All passing.
+
+The 2.0.1 → 2.0.2 release is a docs-only fix; same universal binary,
+same code paths, same License + Contribution + chooser infrastructure.
+
 ## 2.0.1 — 2026-05-16
 
 Hotfix: ship a **universal binary** (arm64 + x86_64) so Intel Macs can

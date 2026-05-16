@@ -4,6 +4,6 @@
 import Foundation
 
 public enum MultipasteVersion {
-    public static let value = "2.0.1"
+    public static let value = "2.0.2"
     public static let bundleIdentifier = "com.rohin.multipaste"
 }

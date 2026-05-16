@@ -28,6 +28,8 @@ enum BuildScriptTests {
     static func registerAll() {
         TestRegistry.register("BuildScript/buildShDefaultsToUniversal", buildShDefaultsToUniversal)
         TestRegistry.register("BuildScript/buildShVerifiesEmbeddedArchitectures", buildShVerifiesEmbeddedArchitectures)
+        TestRegistry.register("BuildScript/dmgReadmeUsesControlClickNotDoubleClick", dmgReadmeUsesControlClickNotDoubleClick)
+        TestRegistry.register("BuildScript/dmgReadmeMentionsSystemSettingsFallback", dmgReadmeMentionsSystemSettingsFallback)
     }
 
     private static var packageRoot: URL {
@@ -86,5 +88,71 @@ enum BuildScriptTests {
         // in proximity to the arch-check loop.
         try expect(script.contains("built binary missing requested architecture"),
                    "build.sh must fail with a descriptive message if an arch is missing from the embedded binary")
+    }
+
+    // The in-DMG "READ ME FIRST.txt" tells users how to launch the
+    // app for the first time. Multipaste is ad-hoc signed (no Apple
+    // Developer ID), so on first launch Gatekeeper rejects a double-
+    // click with "Multipaste cannot be opened" — and the dialog has
+    // NO Open button, only Cancel + Move to Bin. The user MUST
+    // control-click (or right-click) → Open to get the dialog that
+    // does have an Open button. v2.0.2 fixed the in-DMG README which
+    // had said "double-click" at step 2 → user stuck immediately.
+    // These two tests catch any future edit that reintroduces the
+    // broken "just double-click" wording.
+    static func dmgReadmeUsesControlClickNotDoubleClick() throws {
+        let script = try read("scripts/dmg.sh")
+        // Locate the heredoc that defines the in-DMG README.
+        guard let start = script.range(of: "READ ME FIRST.txt\" <<EOF"),
+              let end = script.range(of: "\nEOF\n", range: start.upperBound..<script.endIndex) else {
+            throw TestFailure(
+                message: "Could not locate the in-DMG README heredoc in scripts/dmg.sh",
+                file: #file, line: #line)
+        }
+        let readme = String(script[start.upperBound..<end.lowerBound])
+
+        // Must explicitly mention control-click or right-click as the
+        // first-launch instruction. "control-click" is the Apple
+        // canonical term but accept either to be permissive.
+        let mentionsControlClick = readme.lowercased().contains("control-click") ||
+                                   readme.lowercased().contains("right-click")
+        try expect(mentionsControlClick,
+                   "in-DMG README must instruct users to control-click (or right-click) on first launch — double-click hits a Gatekeeper dialog with NO Open button for ad-hoc signed apps")
+
+        // Must reference the Open button (control-click → Open) so
+        // users know what to click in the resulting dialog.
+        try expect(readme.contains("Open"),
+                   "in-DMG README must mention the Open button in the control-click flow")
+
+        // Must NOT instruct the user to ONLY double-click as the
+        // primary install step (the v2.0.1-and-earlier bug).
+        // Detection: look for the specific instruction wording that
+        // would mislead users. "double-click" appearing in
+        // explanatory text (like "every subsequent launch is an
+        // ordinary double-click") is fine — what we forbid is the
+        // step-2-instruction form.
+        try expect(!readme.contains("double-click Multipaste"),
+                   "in-DMG README must NOT instruct users to double-click Multipaste as the first-launch action — that's the v2.0.1-era bug. Use control-click → Open instead.")
+    }
+
+    static func dmgReadmeMentionsSystemSettingsFallback() throws {
+        let script = try read("scripts/dmg.sh")
+        guard let start = script.range(of: "READ ME FIRST.txt\" <<EOF"),
+              let end = script.range(of: "\nEOF\n", range: start.upperBound..<script.endIndex) else {
+            throw TestFailure(
+                message: "Could not locate the in-DMG README heredoc in scripts/dmg.sh",
+                file: #file, line: #line)
+        }
+        let readme = String(script[start.upperBound..<end.lowerBound])
+
+        // On macOS 15 Sequoia, the control-click → Open route has
+        // been progressively hardened. The fallback is System
+        // Settings → Privacy & Security → "Open Anyway". The in-DMG
+        // README should mention this so Sequoia users who get
+        // stuck on control-click have a documented escape.
+        try expect(readme.contains("System Settings"),
+                   "in-DMG README should mention System Settings → Privacy & Security as a Gatekeeper fallback (control-click → Open is being hardened on macOS 15 Sequoia)")
+        try expect(readme.contains("Open Anyway") || readme.contains("Privacy"),
+                   "in-DMG README should reference the \"Open Anyway\" button in System Settings → Privacy & Security")
     }
 }
