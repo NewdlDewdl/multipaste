@@ -18,5 +18,6 @@ IssueChooserTests.registerAll()
 ReadmePolishTests.registerAll()
 VersionConsistencyTests.registerAll()
 BuildScriptTests.registerAll()
+InfoPlistTests.registerAll()
 
 exit(Int32(runAllTests()))

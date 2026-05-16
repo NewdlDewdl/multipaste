@@ -95,6 +95,85 @@ The 2.0.0 → 2.0.1 release is feature-identical otherwise — same
 clipboard history, same snippet expansion, same License + Contribution
 + chooser infrastructure. Just runs on Intel now.
 
+### Post-2.0.1 audit + lock-down (no version bump)
+
+After shipping v2.0.1 to the Intel-Ventura friend, did a deep audit
+to confirm he wouldn't hit ANY OTHER issues after the universal-
+binary fix. Audit covered: API availability (anything macOS 14+
+would crash on 13.7.8), force unwraps + crash points on the launch
+path, threading + async correctness (timer modes, pipe drains,
+RunLoop scheduling), Info.plist completeness, hardened-runtime
+entitlements, regression of the four historical Accessibility/TCC
+bugs (1.5.0 / 1.6.0 / 1.6.1), unresolved TODO/FIXME, and the
+first-launch path.
+
+Audit verdict: **clean.** No HIGH/MEDIUM/LOW findings. All four
+historical bug fixes still in place. No macOS 14+ APIs used (only
+`#available(macOS 13.0, *)` guards exist, which Ventura satisfies).
+No risky force unwraps on the launch path. Timer scheduled in
+`.common` mode. Pipe drained async. Bundle structure complete and
+correctly signed.
+
+Codified the verified properties so they stay verified:
+
+- **`Tests/MultipasteCoreTests/InfoPlistTests.swift`** — NEW suite,
+  7 tests:
+    1. `bundleIdentifierMatchesSwift` — Info.plist
+       `CFBundleIdentifier` matches Swift's
+       `MultipasteVersion.bundleIdentifier`. Drift breaks every
+       TCC grant, Login Item, preference, and launch agent
+       (everything keyed by bundle ID).
+    2. `packageTypeIsAPPL` — `CFBundlePackageType` is exactly
+       `APPL` (without this macOS doesn't recognize the bundle
+       as an app).
+    3. `principalClassIsNSApplication` — required for AppKit apps.
+    4. `isMenuBarOnlyApp` — `LSUIElement` is true. Without this
+       Multipaste shows a Dock icon and ⌘W behaves wrong.
+    5. `minimumSystemVersionIs13` — `LSMinimumSystemVersion` is
+       `13.0`. Test failure indicates someone raised the floor —
+       if intentional, update SECURITY.md's supported-versions
+       table too.
+    6. `hasAppleEventsUsageDescription` — present + non-empty +
+       mentions Multipaste/paste. macOS displays it on first
+       Apple Events use; a missing string can cause silent denial.
+    7. `copyrightReferencesPolyFormStrictAndCommercialEmail` —
+       `NSHumanReadableCopyright` mentions PolyForm Strict + the
+       commercial-license email. Finder → Get Info surfaces this.
+
+- **`Makefile`** — new `make verify-app` target. Runs after `make
+  build` (or as release-prep) to confirm the BUILT bundle (not just
+  the source) is correct: lipo asserts both archs are present in
+  the embedded binary, `codesign --verify --deep --strict` passes,
+  `CFBundleShortVersionString` matches `Version.swift`,
+  `LSMinimumSystemVersion` is `13.0`. Fails non-zero on any check.
+  Verified end-to-end against the actual v2.0.1 release bundle —
+  all 4 checks green.
+
+- README.md `Tests:` badge bumped 135 → 142. Test-coverage table
+  gained an `InfoPlist` row. `make` reference list mentions the
+  new `verify-app` target.
+
+Audit-summary results (file:line evidence in the audit trail):
+
+- All 4 historical bugs still fixed:
+  - v1.5.0 timer-paused-in-modal: `PermissionMonitor.swift:80-109`
+    (RunLoop.main + .common mode) ✓
+  - v1.6.0 cdhash drift: `build.sh:82` (designated requirement
+    by bundle ID) ✓
+  - v1.6.0 LaunchAgent TCC loss: `AppDelegate.swift:139-161`
+    (SMAppService migration) ✓
+  - v1.6.1 pipe deadlock: `SingleInstance.swift:37-54`
+    (async readabilityHandler before waitUntilExit) ✓
+
+- No macOS 14+ APIs anywhere in Sources/.
+- No `try!` anywhere in Sources/.
+- Only `fatalError()` calls are in `init?(coder:)` initializers
+  that are never invoked at runtime (NSView/NSWindow subclasses
+  that don't support coder-based init).
+- No TODO/FIXME/XXX/HACK comments in Sources/.
+
+Test count: **142** (was 135). All passing in ~81 ms.
+
 ## 2.0.0 — 2026-05-16
 
 Relicensed from MIT to **PolyForm Strict License 1.0.0** — the most
