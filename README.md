@@ -383,7 +383,7 @@ does not make network calls outside the once-a-day update check
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
   `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 133 unit tests live here (incl. License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
+  All testable. 142 unit tests live here (incl. License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -417,7 +417,8 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test            # runs all 133 unit tests in ~70 ms
+make test            # runs all 142 unit tests in ~70 ms
+make verify-app      # verifies the built .app: universal binary + codesign + plist
 ```
 
 Tests use a small custom harness
@@ -451,7 +452,9 @@ Coverage:
 | `IssueChooser`         | 8     | bug_report.yml is a YAML form with required fields (macOS version, Multipaste version, install method, arch, repro) + routes security to email; feature_request.yml has CLA acknowledgment including relicensing-clause callout; chooser config.yml disables blank issues + has security/commercial/Discussions/CONTRIBUTING contact links; old .md template removed; SECURITY.md exists at repo root + documents reporting channel + supported versions |
 | `ReadmePolish`         | 6     | Hero logo file exists at `Resources/icon-256.png` + has valid PNG magic bytes; README intro has centered `<p align="center">` hero with logo (192px width) + meaningful alt text + centered `<h1>Multipaste</h1>`; intro has a quick-nav row with ≥4 section anchors; intro has a bold Download CTA linking to `releases/latest`; **README does NOT contain stale build-duration claims** (case-insensitive scan for one-session / single-sitting variants — regression guard); **snippet-expansion section uses a generic `you@example.com` example** rather than the maintainer's personal address (regression guard) |
 | `VersionConsistency`   | 6     | Version.swift's `MultipasteVersion.value` parses cleanly; Info.plist `CFBundleShortVersionString` agrees with Version.swift; README hero `Download vX.Y.Z` CTA matches; README install section references `Multipaste-X.Y.Z.dmg` matching the canonical version; **no stale `Multipaste-A.B.C.dmg` patterns anywhere in README** (the regression-guard that catches the bug class where Version.swift bumps but the README install link still points at the old DMG); CHANGELOG's latest `## X.Y.Z` entry matches; SECURITY.md supported-versions table mentions the current major series (e.g. `2.0.x`) |
-| **Total**              | **133**| Pure logic; UI is integration-tested manually          |
+| `BuildScript`          | 2     | `scripts/build.sh` defaults to `ARCHS="${MULTIPASTE_BUILD_ARCHS:-arm64 x86_64}"` (so a fresh build is universal — **fixes the v2.0.0 Intel-can't-open bug**); script contains `lipo -create` step AND a `lipo -archs` post-build verification that fails the build if any requested arch is missing |
+| `InfoPlist`            | 7     | CFBundleIdentifier in Info.plist matches Swift's `MultipasteVersion.bundleIdentifier` (drift breaks every TCC grant + Login Item + preference + launch agent — anything keyed by bundle ID); CFBundlePackageType is `APPL`; NSPrincipalClass is `NSApplication`; LSUIElement is true (menubar-only, no Dock icon); LSMinimumSystemVersion is `13.0`; NSAppleEventsUsageDescription present + non-empty + mentions Multipaste/paste; NSHumanReadableCopyright references PolyForm Strict + commercial-license email (Finder Get Info shows the right contact) |
+| **Total**              | **142**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -502,7 +505,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 133 unit tests (~70 ms)
+make test          # run all 142 unit tests (~70 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
