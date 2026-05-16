@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Rohin Agrawal
+// SPDX-License-Identifier: LicenseRef-PolyForm-Strict-1.0.0
+
 import AppKit
 
 /// Ensures only one Multipaste instance is alive at a time. Without this,

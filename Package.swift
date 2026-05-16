@@ -1,4 +1,13 @@
 // swift-tools-version:5.9
+// SPDX-FileCopyrightText: Copyright (c) 2026 Rohin Agrawal
+// SPDX-License-Identifier: LicenseRef-PolyForm-Strict-1.0.0
+//
+// Multipaste — clipboard history and snippet expansion for macOS.
+// Source-available under PolyForm Strict 1.0.0. Noncommercial use only;
+// commercial licensing: rohin.agrawal@gmail.com.
+// Full license: ./LICENSE.md  |  REUSE metadata: ./REUSE.toml
+// Canonical license URL: https://polyformproject.org/licenses/strict/1.0.0/
+
 import PackageDescription
 
 let package = Package(

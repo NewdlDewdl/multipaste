@@ -213,6 +213,82 @@ source-available projects use.
   75–90 to accommodate the new 6-line contribution-pointer block.
 - Test count: **102** (was 95).
 
+### PolyForm standards compliance (added post-relicense)
+
+Adopted every recommendation from
+<https://github.com/polyformproject/polyformproject.org> so that
+license-detection tools (licensee, FOSSology, scancode, GitHub's
+license-detection, the REUSE tool) can correctly identify Multipaste's
+license, and so that downstream auditors / package managers /
+SBOM-generators see consistent metadata everywhere they look.
+
+PolyForm Strict 1.0.0 is **not** on the SPDX standard license list
+(only `PolyForm-Noncommercial-1.0.0` and `PolyForm-Small-Business-1.0.0`
+are). The SPDX convention for non-standard licenses is the
+`LicenseRef-` prefix, so Multipaste's machine-readable identifier
+everywhere is **`LicenseRef-PolyForm-Strict-1.0.0`**.
+
+Added:
+
+- **`REUSE.toml`** — declares `SPDX-License-Identifier =
+  "LicenseRef-PolyForm-Strict-1.0.0"` and
+  `SPDX-FileCopyrightText = "Copyright (c) 2026 Rohin Agrawal"` for
+  every path-glob in the repo (Sources/, Tests/, scripts/, Resources/,
+  LaunchAgent/, root docs, .github/, LICENSE.md, LICENSES/).
+  Follows the [REUSE Specification](https://reuse.software/spec/)
+  format used by the Linux Foundation, KDE, Mozilla, and others.
+- **`.licensee.json`** — tells the [licensee
+  gem](https://github.com/licensee/licensee) (used by GitHub's
+  license-detection) that the project is under
+  `LicenseRef-PolyForm-Strict-1.0.0` instead of having it guess
+  against the SPDX standard list and fail.
+- **`LICENSES/LicenseRef-PolyForm-Strict-1.0.0.md`** — symlink to
+  `../LICENSE.md` at the REUSE-canonical path. The REUSE tool walks
+  this directory to discover licenses by SPDX ID; without it, REUSE
+  emits "missing license file" warnings even when LICENSE.md is
+  present.
+- **`PolyForm Strict 1.0.0` badge in README.md** — clickable image at
+  the canonical `https://polyformproject.org/strict.png` URL,
+  linking to <https://polyformproject.org/licenses/strict/1.0.0/>.
+  Same badge the PolyForm Project uses on its own licenses
+  comparison page.
+
+Modified:
+
+- **All 41 `.swift` source files** (under `Sources/` and `Tests/`)
+  gained a 2-line SPDX header at the very top:
+  ```
+  // SPDX-FileCopyrightText: Copyright (c) 2026 Rohin Agrawal
+  // SPDX-License-Identifier: LicenseRef-PolyForm-Strict-1.0.0
+  ```
+  This is the per-file-header form prescribed by the SPDX spec and
+  is what FOSSology / scancode look for when scanning source.
+- **`Package.swift`** — gained the same SPDX header (after the
+  required `// swift-tools-version:5.9` line, which SwiftPM mandates
+  on line 1) plus a short pointer at LICENSE.md / REUSE.toml.
+
+Tests:
+
+- **`Tests/MultipasteCoreTests/LicensingMetadataTests.swift`** — NEW
+  suite, 11 tests covering REUSE.toml existence + content,
+  .licensee.json existence + JSON-validity + content, LICENSES/
+  canonical file existence + symlink-integrity (content matches
+  LICENSE.md exactly), every `.swift` file under Sources/ and Tests/
+  has SPDX-License-Identifier + SPDX-FileCopyrightText in the top 5
+  lines, Package.swift has SPDX header after the swift-tools-version
+  directive, README contains the canonical PolyForm badge URL and
+  the canonical license URL.
+
+Upstream:
+
+- Opened a PR to <https://github.com/polyformproject/polyformproject.org>
+  adding Multipaste to the auto-generated
+  [adopters showcase](https://polyformproject.org/adopters):
+  `adopters/multipaste.md` (description + license link) and
+  `adopters/multipaste.png` (resized 256×256 app icon).
+
+- Test count: **113** (was 102).
+
 The 1.9.0 → 2.0.0 release is otherwise feature-identical.
 
 ## 1.9.0 — 2026-05-11

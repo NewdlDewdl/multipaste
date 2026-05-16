@@ -1,0 +1,58 @@
+# REUSE Specification configuration — https://reuse.software/spec/
+#
+# Declares the copyright + license of every file in the repository for
+# automated tooling (reuse-tool, FOSSology, scancode, etc.). Most files
+# also carry inline SPDX-License-Identifier headers; the entries below
+# cover binary assets, generated files, and anything where an inline
+# header would be inappropriate or impossible.
+#
+# License: LicenseRef-PolyForm-Strict-1.0.0 — see
+# LICENSES/LicenseRef-PolyForm-Strict-1.0.0.md (symlink → ../LICENSE.md)
+# and the canonical PolyForm Strict 1.0.0 text at
+# https://polyformproject.org/licenses/strict/1.0.0/.
+
+version = 1
+
+SPDX-PackageName             = "Multipaste"
+SPDX-PackageSupplier         = "Rohin Agrawal <rohin.agrawal@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/NewdlDewdl/multipaste"
+
+# All Swift source files: code + tests + Package.swift. These also carry
+# inline SPDX headers, but the REUSE annotation makes them tool-discoverable
+# without parsing the source.
+[[annotations]]
+path                     = ["Sources/**/*.swift", "Tests/**/*.swift", "Package.swift"]
+precedence               = "aggregate"
+SPDX-FileCopyrightText   = "Copyright (c) 2026 Rohin Agrawal"
+SPDX-License-Identifier  = "LicenseRef-PolyForm-Strict-1.0.0"
+
+# Build / packaging scripts.
+[[annotations]]
+path                     = ["scripts/*.sh", "scripts/*.swift", "Makefile"]
+precedence               = "aggregate"
+SPDX-FileCopyrightText   = "Copyright (c) 2026 Rohin Agrawal"
+SPDX-License-Identifier  = "LicenseRef-PolyForm-Strict-1.0.0"
+
+# App resources (icon, plist, packaging metadata).
+[[annotations]]
+path                     = ["Resources/**", "LaunchAgent/**"]
+precedence               = "aggregate"
+SPDX-FileCopyrightText   = "Copyright (c) 2026 Rohin Agrawal"
+SPDX-License-Identifier  = "LicenseRef-PolyForm-Strict-1.0.0"
+
+# Documentation and metadata at repo root.
+[[annotations]]
+path                     = ["README.md", "CHANGELOG.md", "CONTRIBUTING.md", ".gitignore", ".github/**"]
+precedence               = "aggregate"
+SPDX-FileCopyrightText   = "Copyright (c) 2026 Rohin Agrawal"
+SPDX-License-Identifier  = "LicenseRef-PolyForm-Strict-1.0.0"
+
+# The LICENSE.md file and the LICENSES/ directory contain the PolyForm
+# Strict 1.0.0 license text, which is itself licensed by the PolyForm
+# Project for verbatim reproduction. We attribute the FSF-equivalent
+# upstream and keep the project copyright on the surrounding header.
+[[annotations]]
+path                     = ["LICENSE.md", "LICENSES/**"]
+precedence               = "aggregate"
+SPDX-FileCopyrightText   = ["Copyright (c) 2026 Rohin Agrawal", "Copyright (c) 2020 The PolyForm Project (license text)"]
+SPDX-License-Identifier  = "LicenseRef-PolyForm-Strict-1.0.0"

@@ -1,0 +1,9 @@
+{
+  "comment": "Configuration for the `licensee` license-detection gem (https://github.com/licensee/licensee). Multipaste is licensed under PolyForm Strict 1.0.0, which is NOT on the SPDX standard list, so we declare it via the SPDX `LicenseRef-` convention. The licensee tool will recognize `LicenseRef-PolyForm-Strict-1.0.0` from this file and stop trying to guess against the SPDX standard list.",
+  "licenses": {
+    "spdx": [
+      "LicenseRef-PolyForm-Strict-1.0.0"
+    ]
+  },
+  "corrections": true
+}

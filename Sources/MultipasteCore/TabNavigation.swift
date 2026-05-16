@@ -1,3 +1,6 @@
+// SPDX-FileCopyrightText: Copyright (c) 2026 Rohin Agrawal
+// SPDX-License-Identifier: LicenseRef-PolyForm-Strict-1.0.0
+
 import Foundation
 
 /// Pure state machine for Tab / Shift+Tab navigation in the picker.
