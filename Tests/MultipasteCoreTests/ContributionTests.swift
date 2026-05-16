@@ -23,7 +23,6 @@ enum ContributionTests {
         TestRegistry.register("Contribution/contributingPermitsFutureRelicensing", contributingPermitsFutureRelicensing)
         TestRegistry.register("Contribution/contributingExplainsPolyFormStrictContext", contributingExplainsPolyFormStrictContext)
         TestRegistry.register("Contribution/prTemplateExistsAndReferencesCLA", prTemplateExistsAndReferencesCLA)
-        TestRegistry.register("Contribution/issueTemplateExists", issueTemplateExists)
     }
 
     // Package root is two directories above this test file.
@@ -112,20 +111,6 @@ enum ContributionTests {
                    "PR template should call out the relicensing clause specifically (it's the unusual one)")
     }
 
-    static func issueTemplateExists() throws {
-        let url = packageRoot.appendingPathComponent(".github/ISSUE_TEMPLATE/bug_report.md")
-        try expect(FileManager.default.fileExists(atPath: url.path),
-                   ".github/ISSUE_TEMPLATE/bug_report.md not found at \(url.path)")
-        let text = try read(".github/ISSUE_TEMPLATE/bug_report.md")
-        // Front-matter required for GitHub to recognize it as a template.
-        try expect(text.hasPrefix("---\n"),
-                   "Bug report template must start with YAML front-matter")
-        try expect(text.contains("name: Bug report"),
-                   "Bug report template missing \"name: Bug report\" front-matter field")
-        // Useful prompts that make bug reports actionable.
-        try expect(text.contains("macOS version"),
-                   "Bug report template should ask for macOS version")
-        try expect(text.contains("Multipaste version"),
-                   "Bug report template should ask for Multipaste version")
-    }
+    // Bug-report and feature-request templates, the issue-chooser config,
+    // and SECURITY.md are tested by IssueChooserTests.swift.
 }

@@ -1,0 +1,88 @@
+name: Feature request
+description: Propose a new feature, enhancement, or change in behavior.
+title: "[feature]: "
+labels: ["enhancement", "triage"]
+assignees:
+  - NewdlDewdl
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for proposing a feature. Multipaste is intentionally small —
+        please read [CONTRIBUTING.md](https://github.com/NewdlDewdl/multipaste/blob/main/CONTRIBUTING.md#what-kinds-of-contributions-are-welcome)
+        first to see what's in scope (bug fixes, perf, accessibility, doc
+        improvements) and what's not (telemetry, new dependencies,
+        wholesale UI redesigns).
+
+        If you intend to submit a PR for this feature, the
+        [Contributor License Agreement (CLA)](https://github.com/NewdlDewdl/multipaste/blob/main/CONTRIBUTING.md#contributor-license-agreement-cla)
+        applies — including the right to **relicense** your contribution
+        under any future terms.
+
+  - type: checkboxes
+    id: prechecks
+    attributes:
+      label: Pre-flight
+      options:
+        - label: I searched [existing issues](https://github.com/NewdlDewdl/multipaste/issues?q=is%3Aissue) and this proposal isn't a duplicate.
+          required: true
+        - label: I read CONTRIBUTING.md and this fits the "welcome" list (not e.g. telemetry, network calls, new dependencies, or wholesale redesigns).
+          required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem are you trying to solve?
+      description: |
+        Describe the underlying need, not the solution. "I have to ⌘⇧V then
+        type 4 keystrokes to filter for a snippet I use 30 times a day" is
+        a better problem statement than "add favorites".
+      placeholder: "e.g. I frequently want to paste my address into forms, and Multipaste's snippet expansion works for short strings but breaks on multi-line content."
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: What would the ideal solution look like?
+      description: |
+        From the user's perspective. Keyboard shortcuts, menu items, picker behavior, etc. Mockups welcome but not required.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What alternatives have you considered?
+      description: |
+        Other Multipaste features that almost solve this, other macOS tools you've tried, workarounds you currently use. Helps gauge whether the proposal is the right shape.
+
+  - type: dropdown
+    id: importance
+    attributes:
+      label: How important is this to you?
+      description: Be honest. Helps with prioritization.
+      options:
+        - Would be nice to have someday
+        - Would improve my daily workflow
+        - I currently can't use Multipaste for my primary use case without this
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: contribution-intent
+    attributes:
+      label: Are you offering to implement this?
+      description: |
+        Optional. If yes, the [CLA in CONTRIBUTING.md](https://github.com/NewdlDewdl/multipaste/blob/main/CONTRIBUTING.md#contributor-license-agreement-cla) applies to your code — including the licensor's right to relicense your contribution under any future terms.
+      options:
+        - label: I'd like to implement this myself and open a PR.
+        - label: I agree to the Contributor License Agreement (only required if implementing).
+        - label: I specifically understand and accept §1.4 (the right of the licensor to relicense my contribution under any future terms, including proprietary closed-source) (only required if implementing).
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Links to issues in other projects that solve this, related macOS APIs, prior art, anything that helps.

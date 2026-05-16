@@ -281,13 +281,120 @@ Tests:
 
 Upstream:
 
-- Opened a PR to <https://github.com/polyformproject/polyformproject.org>
+- Opened [polyformproject/polyformproject.org#3](https://github.com/polyformproject/polyformproject.org/pull/3)
   adding Multipaste to the auto-generated
   [adopters showcase](https://polyformproject.org/adopters):
   `adopters/multipaste.md` (description + license link) and
   `adopters/multipaste.png` (resized 256×256 app icon).
 
 - Test count: **113** (was 102).
+
+### Issue-template chooser + SECURITY.md (added post-relicense)
+
+Replaced the single-template `bug_report.md` with a full GitHub issue
+chooser per
+<https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository>.
+Users opening a new issue now see four contact-link off-ramps
+(security email, commercial-licensing email, Discussions, CONTRIBUTING.md)
+followed by two structured YAML forms (bug report, feature request)
+with required fields, dropdowns, and CLA-acknowledgment checkboxes.
+Blank issues are disabled.
+
+Side effect: enabled GitHub Discussions on the repo so the chooser's
+"General discussion / questions" off-ramp has a destination.
+
+Added:
+
+- **`.github/ISSUE_TEMPLATE/bug_report.yml`** — modern YAML issue
+  form. Replaces the markdown template. Required fields: pre-flight
+  checkboxes (searched issues, on latest release, not a security
+  vuln), what happened, expected behavior, steps to reproduce,
+  macOS version, Multipaste version, install-method dropdown,
+  architecture dropdown. Optional fields: other clipboard managers,
+  logs (rendered as shell block), screenshots, anything else. The
+  required-fields validation means contributors can't accidentally
+  submit a report missing the macOS version or repro steps.
+
+- **`.github/ISSUE_TEMPLATE/feature_request.yml`** — modern YAML
+  issue form. Required fields: pre-flight checkboxes (searched
+  existing, read CONTRIBUTING), what problem are you solving (the
+  underlying need, not the solution), ideal solution from user's
+  perspective, importance dropdown (nice to have / improves my
+  workflow / blocking my use). Optional fields: alternatives
+  considered, additional context, **and three CLA-acknowledgment
+  checkboxes** that fire only if the contributor offers to
+  implement the feature themselves — including specific
+  acknowledgment of CLA §1.4 (the relicensing right). This
+  surfaces the unusual clause at feature-request time so it isn't
+  a surprise when the PR lands.
+
+- **`.github/ISSUE_TEMPLATE/config.yml`** — the chooser
+  configuration. Sets `blank_issues_enabled: false` (forces users
+  into a template) and adds four `contact_links`:
+  - 🔐 Security vulnerability (private disclosure) — mailto link.
+  - 💼 Commercial licensing inquiry — mailto link.
+  - 💬 General discussion / questions — Discussions URL.
+  - 📖 Read CONTRIBUTING.md before opening a feature request —
+    repo URL.
+
+- **`SECURITY.md`** at repo root — responsible-disclosure policy
+  that the chooser routes security reports to. Documents which
+  versions are supported (2.0.x ✅, 1.9.x ⚠️ best-effort, <1.9 ❌),
+  the reporting channel (email + subject convention + explicit
+  "don't open a public issue" wording), what to include in a
+  report, what to expect from the maintainer (7-day acknowledgment,
+  30-day investigation, patch release for confirmed criticals,
+  public advisory after fix), and an explicit in-scope / out-of-
+  scope section that acknowledges Multipaste's threat model (it
+  reads the clipboard by design; that is the feature, not a
+  vulnerability; `org.nspasteboard.org` privacy markers are how
+  apps opt out).
+
+Modified:
+
+- **`CONTRIBUTING.md`** — "How to report a bug" section rewritten
+  to describe the new YAML form's required fields and the chooser.
+  New "How to propose a feature" section explaining the
+  feature-request form and its CLA-acknowledgment checkboxes. New
+  "Is this a bug?" pointer at GitHub Discussions.
+
+- **`Tests/MultipasteCoreTests/ContributionTests.swift`** — removed
+  the now-stale `issueTemplateExists` test (which expected the old
+  `bug_report.md`). The replacement coverage lives in the new
+  `IssueChooser` suite.
+
+- **`Tests/MultipasteCoreTests/IssueChooserTests.swift`** — NEW
+  suite, 8 tests:
+  1. `bug_report.yml` exists, is a YAML form (has `name:`,
+     `description:`, `body:`), required fields are present
+     (macOS version, Multipaste version, install method,
+     architecture, repro steps), `required: true` count ≥ 5,
+     security reports are routed to email instead of the form.
+  2. `feature_request.yml` exists, is a YAML form, references
+     the Contributor License Agreement and specifically the
+     relicensing clause, links to CONTRIBUTING.md, asks about
+     importance.
+  3. `config.yml` exists with `blank_issues_enabled: false`.
+  4. `config.yml` has the four required contact links (Security,
+     Commercial, Discussions, CONTRIBUTING) with correct email
+     destinations and the Discussions URL.
+  5. Old `bug_report.md` is gone (guards against accidental
+     resurrection that would split the chooser).
+  6. `SECURITY.md` exists at repo root (where GitHub looks).
+  7. `SECURITY.md` documents the reporting channel
+     (`rohin.agrawal@gmail.com` + subject convention + "don't
+     open a public issue" wording).
+  8. `SECURITY.md` documents supported versions (mentions 2.0.x).
+
+- **`README.md`** — test count bumped 113 → 120 in the badge,
+  architecture description, two `make test` blocks, and the
+  Tests-coverage table totals. Added an `IssueChooser` row to the
+  table summarizing the 8 new tests.
+
+- **`Tests/MultipasteCoreTests/main.swift`** — registers
+  `IssueChooserTests.registerAll()`.
+
+- Test count: **120** (was 113). All passing in ~62 ms.
 
 The 1.9.0 → 2.0.0 release is otherwise feature-identical.
 

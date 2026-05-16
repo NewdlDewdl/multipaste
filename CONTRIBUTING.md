@@ -240,19 +240,59 @@ happen. Be patient.
 
 ## How to report a bug
 
-Use the bug-report issue template at
-`.github/ISSUE_TEMPLATE/bug_report.md`. The key fields:
+Open a [new issue](https://github.com/NewdlDewdl/multipaste/issues/new/choose).
+GitHub will show you the issue-template chooser configured in
+`.github/ISSUE_TEMPLATE/config.yml`. Pick **"Bug report"** — it's a
+structured YAML form that asks for:
 
-- macOS version (e.g., 14.5 Sonoma, 26.0 Tahoe).
-- Multipaste version (menu bar → About).
-- Install method (DMG, Homebrew, source).
-- Apple Silicon or Intel.
-- Steps to reproduce.
-- Tail of `~/Library/Logs/Multipaste/multipaste.log`.
+- macOS version (e.g., 14.5 Sonoma, 26.0 Tahoe) — required.
+- Multipaste version — required.
+- Install method (DMG / Homebrew / source) — required, dropdown.
+- CPU architecture (Apple Silicon / Intel / Rosetta) — required,
+  dropdown.
+- Steps to reproduce — required.
+- Other clipboard managers running concurrently — optional but
+  often relevant.
+- Log tail from `~/Library/Logs/Multipaste/multipaste.log` —
+  optional but please paste it when reporting startup / hotkey /
+  Accessibility-permission bugs.
+- Screenshots — optional.
+
+You cannot open a blank issue (`blank_issues_enabled: false`) — the
+chooser forces you into a template so every report has the info needed
+to triage it.
 
 For **security vulnerabilities**, do NOT open a public issue. Email
-<rohin.agrawal@gmail.com> with the details and "Multipaste security"
-in the subject.
+<rohin.agrawal@gmail.com> with "Multipaste security" in the subject —
+see [SECURITY.md](SECURITY.md) for the full disclosure policy.
+
+## How to propose a feature
+
+Open a [new issue](https://github.com/NewdlDewdl/multipaste/issues/new/choose)
+and pick **"Feature request"** — it's a structured form that asks for
+the problem (not the solution), the ideal user-facing behavior,
+alternatives you've considered, how important it is to you, and
+whether you intend to implement it yourself.
+
+If you intend to implement it, the form asks you to acknowledge the
+[Contributor License Agreement](#contributor-license-agreement-cla)
+— including the relicensing-right clause. Doing this on the feature
+issue saves a round-trip when you later open the PR.
+
+Before opening a feature request, please read the
+"[What kinds of contributions are welcome](#what-kinds-of-contributions-are-welcome)"
+section above — Multipaste is intentionally small, and proposals
+outside that scope (telemetry, network calls beyond the update check,
+new runtime dependencies, wholesale UI redesigns) will be politely
+declined.
+
+## "Is this a bug?" — general discussion
+
+For broader discussion, design questions, or "I'm not sure if this
+is a bug yet" pre-checks, use
+[Discussions](https://github.com/NewdlDewdl/multipaste/discussions)
+instead of the issue tracker. The chooser links to it from the
+"General discussion" off-ramp.
 
 ---
 

@@ -1,0 +1,36 @@
+# Configures GitHub's issue template chooser.
+# Docs: https://docs.github.com/en/communities/using-templates-to-encourage-useful-issues-and-pull-requests/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
+
+# Force users into one of the templates above — no more "I have a problem"
+# issues with zero reproduction info.
+blank_issues_enabled: false
+
+# Off-ramps surfaced at the top of the issue chooser, before the bug/
+# feature templates. Each link is rendered as a panel with `name` (bold
+# heading), `about` (one-line description), and the target `url`.
+contact_links:
+  - name: 🔐 Security vulnerability (private disclosure)
+    url: mailto:rohin.agrawal@gmail.com?subject=Multipaste%20security
+    about: |
+      Please email security issues privately rather than opening a public
+      issue. See SECURITY.md for the full disclosure policy.
+
+  - name: 💼 Commercial licensing inquiry
+    url: mailto:rohin.agrawal@gmail.com?subject=Multipaste%20commercial%20license
+    about: |
+      Multipaste is source-available under PolyForm Strict 1.0.0
+      (noncommercial). For commercial use, embedding, or distribution,
+      email for terms.
+
+  - name: 💬 General discussion / questions / "is this a bug?"
+    url: https://github.com/NewdlDewdl/multipaste/discussions
+    about: |
+      For broader discussion, design questions, or "I'm not sure if this
+      is a bug" pre-checks, use Discussions instead of the issue tracker.
+
+  - name: 📖 Read CONTRIBUTING.md before opening a feature request
+    url: https://github.com/NewdlDewdl/multipaste/blob/main/CONTRIBUTING.md
+    about: |
+      Multipaste is small on purpose. The CONTRIBUTING doc lists what
+      kinds of features are in scope and what is not, plus the
+      Contributor License Agreement that applies if you submit code.

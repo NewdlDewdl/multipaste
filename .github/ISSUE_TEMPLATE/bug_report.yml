@@ -1,0 +1,130 @@
+name: Bug report
+description: Report something that's broken in Multipaste.
+title: "[bug]: "
+labels: ["bug", "triage"]
+assignees:
+  - NewdlDewdl
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. The fields below ensure the report has the
+        info needed to reproduce — please fill in **everything required**.
+
+        For **security vulnerabilities**, do NOT use this form. Email
+        <rohin.agrawal@gmail.com> with "Multipaste security" in the subject.
+
+  - type: checkboxes
+    id: prechecks
+    attributes:
+      label: Pre-flight
+      description: Quick checks before filing.
+      options:
+        - label: I searched [existing issues](https://github.com/NewdlDewdl/multipaste/issues?q=is%3Aissue) and this is not a duplicate.
+          required: true
+        - label: I'm on the [latest release](https://github.com/NewdlDewdl/multipaste/releases/latest) or have confirmed the bug exists in the latest release.
+          required: true
+        - label: This is not a security vulnerability (those go to rohin.agrawal@gmail.com, not this form).
+          required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: One or two sentences describing the bug.
+      placeholder: e.g. "When I press ⌘⇧V with no clipboard history yet, the picker window appears empty but ↑↓ still seems to move a selection."
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-expected
+    attributes:
+      label: What you expected to happen
+      description: One or two sentences describing the expected behavior.
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      description: Numbered list. Be specific — paths, commands, key sequences.
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      description: Run `sw_vers -productVersion` in Terminal and paste the result. Include the marketing name if you know it (e.g., "14.5 Sonoma", "26.0 Tahoe").
+      placeholder: "14.5 Sonoma"
+    validations:
+      required: true
+
+  - type: input
+    id: multipaste-version
+    attributes:
+      label: Multipaste version
+      description: Menu bar 📋 → About, or `grep CFBundleShortVersionString /Applications/Multipaste.app/Contents/Info.plist`
+      placeholder: "2.0.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Install method
+      description: How did you install Multipaste?
+      options:
+        - DMG drag-and-drop
+        - Homebrew (NewdlDewdl/multipaste tap)
+        - Built from source (`make install`)
+        - Other (describe in "Anything else")
+    validations:
+      required: true
+
+  - type: dropdown
+    id: arch
+    attributes:
+      label: CPU architecture
+      description: Run `uname -m` — arm64 is Apple Silicon, x86_64 is Intel.
+      options:
+        - Apple Silicon (arm64)
+        - Intel (x86_64)
+        - Rosetta 2 (running Intel build on Apple Silicon)
+    validations:
+      required: true
+
+  - type: textarea
+    id: other-clipboard-managers
+    attributes:
+      label: Other clipboard managers / paste tools running concurrently
+      description: e.g. Maccy, Paste, Pastebot, Alfred, Raycast, Espanso, TextExpander. Multipaste's keyboard hooks can collide with other paste tools.
+      placeholder: "None" / "Maccy 0.30 also installed but quit during testing" / "Alfred Snippets active"
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs
+      description: |
+        Paste the last ~50 lines of `~/Library/Logs/Multipaste/multipaste.log` and `multipaste.err.log`.
+
+        If the bug is about the menu-bar icon being dim or the Accessibility permission flow, open menu bar 📋 → Diagnostics… → Copy to Clipboard and paste that here — it includes trust state, cdhash, supervisor PID, and sibling-process IDs.
+      render: shell
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots / screen recordings
+      description: Drag and drop here, or paste image URLs. Helpful but not required.
+
+  - type: textarea
+    id: anything-else
+    attributes:
+      label: Anything else
+      description: Just upgraded macOS? Bug started after a specific Multipaste version? Custom hotkey instead of ⌘⇧V? Anything that might be relevant.

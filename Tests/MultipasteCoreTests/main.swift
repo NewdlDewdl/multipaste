@@ -14,5 +14,6 @@ TabNavigationTests.registerAll()
 LicenseTests.registerAll()
 ContributionTests.registerAll()
 LicensingMetadataTests.registerAll()
+IssueChooserTests.registerAll()
 
 exit(Int32(runAllTests()))
