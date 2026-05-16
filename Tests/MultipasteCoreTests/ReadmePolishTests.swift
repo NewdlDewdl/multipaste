@@ -29,6 +29,8 @@ enum ReadmePolishTests {
         TestRegistry.register("ReadmePolish/readmeHasCenteredLogoHero", readmeHasCenteredLogoHero)
         TestRegistry.register("ReadmePolish/readmeHasQuickNavLinks", readmeHasQuickNavLinks)
         TestRegistry.register("ReadmePolish/readmeHasDownloadCallToAction", readmeHasDownloadCallToAction)
+        TestRegistry.register("ReadmePolish/readmeDoesNotClaimBuiltInOneSession", readmeDoesNotClaimBuiltInOneSession)
+        TestRegistry.register("ReadmePolish/snippetExampleUsesGenericEmail", snippetExampleUsesGenericEmail)
     }
 
     private static var packageRoot: URL {
@@ -112,5 +114,58 @@ enum ReadmePolishTests {
         // markdown ** is fine.
         try expect(head.contains("<strong>") || head.contains("**"),
                    "README Download CTA isn't bold — won't read as a primary action")
+    }
+
+    // ----- 5. "Built in one session" — was true once, became false -----
+
+    // The original v1.0–v1.5-ish work landed in a single session on
+    // 2026-05-11 and the "Made for" footer reflected that. Since then
+    // the project has been iterated on across many more sessions —
+    // v1.5 → v1.9 feature work, then v2.0.0's relicense + SPDX/REUSE
+    // standards compliance + CLA + issue-template chooser + SECURITY +
+    // version-consistency tests + README hero — so the claim is now
+    // factually wrong. This test catches that exact wording plus a few
+    // common variants so the claim can't sneak back in.
+    static func readmeDoesNotClaimBuiltInOneSession() throws {
+        let text = try readReadme()
+        let staleClaims = [
+            "in one session",
+            "in a single session",
+            "in one sitting",
+            "in a single sitting",
+        ]
+        let hit = staleClaims.first(where: { text.lowercased().contains($0) })
+        try expect(hit == nil,
+                   "README contains a stale claim about being built quickly: \"\(hit ?? "")\". The project has been worked on across many sessions; rewrite the \"Made for\" footer to drop the timing claim.")
+    }
+
+    // ----- 6. Snippet example uses a generic email, not a personal one -----
+
+    // The snippet-expansion section walks through "copy an email, set
+    // a trigger for it, expand it elsewhere." Using a generic
+    // placeholder (you@example.com) instead of the maintainer's actual
+    // address makes the example feel about the reader, not about the
+    // author. Also avoids the appearance of leaking a personal email
+    // into a tutorial section even though the address is also
+    // intentionally visible in the License / SECURITY / Commercial
+    // sections.
+    static func snippetExampleUsesGenericEmail() throws {
+        let text = try readReadme()
+        guard let start = text.range(of: "## Snippet expansion") else {
+            throw TestFailure(message: "README missing \"## Snippet expansion\" section header",
+                              file: #file, line: #line)
+        }
+        let afterStart = String(text[start.upperBound...])
+        let sectionBody: String
+        if let nextSection = afterStart.range(of: "\n## ") {
+            sectionBody = String(afterStart[afterStart.startIndex..<nextSection.lowerBound])
+        } else {
+            sectionBody = afterStart
+        }
+
+        try expect(sectionBody.contains("example.com"),
+                   "Snippet expansion section should demonstrate with a generic email like `you@example.com`, not a personal one.")
+        try expect(!sectionBody.contains("rohin.agrawal@gmail.com"),
+                   "Snippet expansion section should not use the maintainer's personal email as the trigger demo — replace with `you@example.com`.")
     }
 }

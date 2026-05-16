@@ -33,7 +33,7 @@ starts at login.
 
 **Latest release:** [v2.0.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 131 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
+&nbsp;·&nbsp; **Tests:** 133 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
 
@@ -131,11 +131,11 @@ path as text on file copies"** if you'd rather have the historical
 Pinned items can have a **trigger** — typing it followed by space, tab,
 or return anywhere on macOS expands it into the snippet content.
 
-1. Copy something (`rohin.agrawal@gmail.com`).
+1. Copy something (`you@example.com`).
 2. Open the picker (`⌘⇧V`), select it, press `⌘E`, type `;e`, hit
    **Save**.
 3. From now on, in any text field, typing `;e ` becomes
-   `rohin.agrawal@gmail.com`. The trigger and the terminating space are
+   `you@example.com`. The trigger and the terminating space are
    deleted; the snippet content is pasted.
 
 Trigger rules:
@@ -383,7 +383,7 @@ does not make network calls outside the once-a-day update check
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
   `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 131 unit tests live here (incl. License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design, and version-string agreement across every artifact).
+  All testable. 133 unit tests live here (incl. License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -417,7 +417,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test            # runs all 131 unit tests in ~70 ms
+make test            # runs all 133 unit tests in ~70 ms
 ```
 
 Tests use a small custom harness
@@ -449,9 +449,9 @@ Coverage:
 | `Contribution`         | 5     | CONTRIBUTING.md exists, CLA contains perpetual/worldwide/royalty-free/irrevocable grant, relicensing-right clause explicitly mentions proprietary closed-source, PolyForm Strict context explained, PR template links to CLA + has confirmation checkboxes + calls out relicensing |
 | `LicensingMetadata`    | 12    | REUSE.toml exists + declares `LicenseRef-PolyForm-Strict-1.0.0` for Sources & Tests, `.licensee.json` exists + valid JSON + declares the SPDX ID, `LICENSES/LicenseRef-PolyForm-Strict-1.0.0.md` exists + content matches LICENSE.md (symlink intact), every `.swift` file under Sources & Tests has SPDX-License-Identifier + SPDX-FileCopyrightText in top 5 lines, Package.swift has SPDX header after `swift-tools-version`, README contains PolyForm badge URL (`polyformproject.org/strict.png`) + canonical license URL + **badge is NOT in the first 30 lines** (regression guard: stops the intimidating "STRICT" logo from migrating back into the intro header above the install instructions) |
 | `IssueChooser`         | 8     | bug_report.yml is a YAML form with required fields (macOS version, Multipaste version, install method, arch, repro) + routes security to email; feature_request.yml has CLA acknowledgment including relicensing-clause callout; chooser config.yml disables blank issues + has security/commercial/Discussions/CONTRIBUTING contact links; old .md template removed; SECURITY.md exists at repo root + documents reporting channel + supported versions |
-| `ReadmePolish`         | 4     | Hero logo file exists at `Resources/icon-256.png` + has valid PNG magic bytes; README intro has centered `<p align="center">` hero with logo (192px width) + meaningful alt text + centered `<h1>Multipaste</h1>`; intro has a quick-nav row with ≥4 section anchors; intro has a bold Download CTA linking to `releases/latest` |
+| `ReadmePolish`         | 6     | Hero logo file exists at `Resources/icon-256.png` + has valid PNG magic bytes; README intro has centered `<p align="center">` hero with logo (192px width) + meaningful alt text + centered `<h1>Multipaste</h1>`; intro has a quick-nav row with ≥4 section anchors; intro has a bold Download CTA linking to `releases/latest`; **README does NOT contain the stale "built in one session" claim** (or variants like "single sitting" — regression guard); **snippet-expansion section uses a generic `you@example.com` example** rather than the maintainer's personal address (regression guard) |
 | `VersionConsistency`   | 6     | Version.swift's `MultipasteVersion.value` parses cleanly; Info.plist `CFBundleShortVersionString` agrees with Version.swift; README hero `Download vX.Y.Z` CTA matches; README install section references `Multipaste-X.Y.Z.dmg` matching the canonical version; **no stale `Multipaste-A.B.C.dmg` patterns anywhere in README** (the regression-guard that catches the bug class where Version.swift bumps but the README install link still points at the old DMG); CHANGELOG's latest `## X.Y.Z` entry matches; SECURITY.md supported-versions table mentions the current major series (e.g. `2.0.x`) |
-| **Total**              | **131**| Pure logic; UI is integration-tested manually          |
+| **Total**              | **133**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -502,7 +502,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 131 unit tests (~70 ms)
+make test          # run all 133 unit tests (~70 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -722,8 +722,10 @@ security issues, do NOT open a public issue — email
 
 ## Made for
 
-Rohin Agrawal. Built start-to-finish in one session: native Swift app,
+Rohin Agrawal. Personal-use macOS daily-driver: native Swift app,
 custom test harness, DMG installer, Homebrew tap, GitHub releases,
-update checker, four-bug forensic deep dive, and a README that explains
-all of it. Search before building. Test before shipping. Boil the
-ocean.
+update checker, four-bug forensic deep dive. v2.0.0 added source-
+available PolyForm Strict licensing with full SPDX/REUSE compliance,
+a Contributor License Agreement, an issue-template chooser, SECURITY.md,
+and 133 tests covering every artifact (including this README). Search
+before building. Test before shipping. Boil the ocean.

@@ -515,6 +515,70 @@ after a version bump*. The fix is twofold:
 
 - Test count: **131** (was 125).
 
+### README "Made for" honesty pass + snippet-example genericization
+
+Two textual issues caught by Rohin:
+
+1. The README's "Made for" footer said *"Built start-to-finish in
+   one session: native Swift app, custom test harness, DMG
+   installer, Homebrew tap, GitHub releases, update checker,
+   four-bug forensic deep dive..."* This was true once (the
+   original v1.0–v1.5-ish work landed in a single session on
+   2026-05-11) but became false as the project iterated across
+   many sessions, culminating in today's v2.0.0 relicense +
+   standards-compliance + tests + chooser + SECURITY.md work.
+
+2. The Snippet expansion tutorial used `rohin.agrawal@gmail.com`
+   as the demo email — making the example feel about the
+   maintainer rather than about the reader.
+
+Fixed:
+
+- README.md "Made for" section — dropped "in one session", added
+  honest description: *"Personal-use macOS daily-driver: native
+  Swift app, custom test harness, DMG installer, Homebrew tap,
+  GitHub releases, update checker, four-bug forensic deep dive.
+  v2.0.0 added source-available PolyForm Strict licensing with
+  full SPDX/REUSE compliance, a Contributor License Agreement, an
+  issue-template chooser, SECURITY.md, and 133 tests covering
+  every artifact (including this README)."*
+
+- README.md Snippet expansion — `rohin.agrawal@gmail.com` →
+  `you@example.com` (both in the "copy" step and the expansion
+  result). Generic placeholder invites the reader to imagine
+  their own email. The personal address still appears in the
+  License / SECURITY / Commercial sections where it's
+  contextually appropriate (commercial-licensing contact,
+  security-disclosure email, copyright notice).
+
+Added regression tests in
+**`Tests/MultipasteCoreTests/ReadmePolishTests.swift`** (suite
+grew 4 → 6 tests):
+
+- `readmeDoesNotClaimBuiltInOneSession` — case-insensitive scan
+  for "in one session", "in a single session", "in one sitting",
+  "in a single sitting". Catches the original wording plus
+  near-variants so the false claim can't sneak back via rewording.
+- `snippetExampleUsesGenericEmail` — scans the lines between
+  `## Snippet expansion` and the next `##` heading; asserts they
+  contain `example.com` and do NOT contain
+  `rohin.agrawal@gmail.com`. The section-scoped check means the
+  test doesn't false-positive on the email appearing legitimately
+  in License / SECURITY / Commercial sections.
+
+Audit of all "Rohin" references across the repo (89 occurrences
+across 25 files) confirmed all other uses are legitimate:
+copyright notices (LICENSE.md + REUSE.toml + 41 source-file SPDX
+headers + Info.plist + CHANGELOG), commercial-licensing contact
+email (LICENSE.md + README + CONTRIBUTING + SECURITY + issue
+chooser + PR template), CLA references (CONTRIBUTING.md +
+README), and the bundle identifier `com.rohin.multipaste` (which
+is a stable API across every Multipaste installation in
+existence — renaming it would break upgrades for every user, so
+it stays).
+
+- Test count: **133** (was 131).
+
 The 1.9.0 → 2.0.0 release is otherwise feature-identical.
 
 ## 1.9.0 — 2026-05-11
