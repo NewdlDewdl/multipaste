@@ -459,6 +459,62 @@ Modified:
 
 - Test count: **125** (was 121).
 
+### Version-consistency tests (added post-relicense)
+
+Caught when Rohin spotted the README's Easy-install section saying
+"Download Multipaste-1.9.0.dmg" while Version.swift / Info.plist /
+release tag / GitHub release / Homebrew cask all said 2.0.0. The
+download link was broken — clicking it 404'd because no v1.9.0
+asset existed at the v2.0.0 release page.
+
+The class of bug is *stale version strings scattered across docs
+after a version bump*. The fix is twofold:
+
+1. Updated the 5 stale strings:
+   - README hero CTA: "440 KB DMG" → "460 KB DMG" (actual size).
+   - README description: "440 KB DMG" → "460 KB DMG", and
+     "~700 KB native Swift" → "~750 KB native Swift" (binary is
+     768 480 bytes ≈ 750 KB; previous "~700 KB" understated).
+   - README Easy-install link: `Multipaste-1.9.0.dmg` →
+     `Multipaste-2.0.0.dmg` (the broken-link bug).
+   - README Easy-install size: "(~420 KB)" → "(~460 KB)".
+   - README "Why pick Multipaste" bullet: "~700 KB binary" →
+     "~750 KB binary".
+
+2. Added a `VersionConsistency` test suite that makes this entire
+   class of bug impossible to ship again.
+
+- **`Tests/MultipasteCoreTests/VersionConsistencyTests.swift`** —
+  NEW suite, 6 tests. The suite reads
+  `Sources/MultipasteCore/Version.swift` for the canonical version
+  (parses `static let value = "X.Y.Z"` via regex) and then asserts:
+
+  1. `swiftAndPlistAgreeOnVersion` — Info.plist's
+     `CFBundleShortVersionString` matches Version.swift exactly.
+  2. `readmeHeroDownloadCTAMatchesVersion` — README hero CTA
+     reads `Download vX.Y.Z` matching the canonical version.
+  3. `readmeInstallSectionReferencesCurrentDMG` — README contains
+     `Multipaste-X.Y.Z.dmg` matching the canonical version.
+  4. `readmeContainsNoStaleDMGReferences` — **the load-bearing
+     test**: scans every `Multipaste-A.B.C.dmg` occurrence in
+     README via regex; any that don't match the canonical version
+     fail the build. Catches the exact bug Rohin spotted, plus
+     every variant of it.
+  5. `changelogLatestEntryMatchesVersion` — CHANGELOG's first
+     `## X.Y.Z` heading matches the canonical version.
+  6. `securityPolicySupportsCurrentMajorSeries` — SECURITY.md
+     supported-versions table mentions the current major series
+     (e.g., `2.0.x`).
+
+  Explicitly out of scope: historical version references in
+  CHANGELOG sub-sections (the v1.9.0 entry SHOULD say 1.9.0),
+  "fixed in v1.6.0"-style historical bug references, PolyForm
+  Strict 1.0.0 (that's the license version, not the app version),
+  the Homebrew tap (separate repo), and approximate size strings
+  (would couple tests to build output).
+
+- Test count: **131** (was 125).
+
 The 1.9.0 → 2.0.0 release is otherwise feature-identical.
 
 ## 1.9.0 — 2026-05-11
