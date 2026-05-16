@@ -17,5 +17,6 @@ LicensingMetadataTests.registerAll()
 IssueChooserTests.registerAll()
 ReadmePolishTests.registerAll()
 VersionConsistencyTests.registerAll()
+BuildScriptTests.registerAll()
 
 exit(Int32(runAllTests()))

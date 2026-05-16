@@ -1,5 +1,100 @@
 # Changelog
 
+## 2.0.1 — 2026-05-16
+
+Hotfix: ship a **universal binary** (arm64 + x86_64) so Intel Macs can
+actually open Multipaste.
+
+### The bug
+
+v2.0.0's `scripts/build.sh` did:
+
+```sh
+ARCH="$(uname -m)"
+swift build -c release --arch "$ARCH" --product Multipaste
+```
+
+— it built only for the *build host's* architecture. Built on an M1
+Mac mini, the v2.0.0 DMG shipped an **arm64-only** binary. Friends on
+Intel Macs downloaded it and got the exact macOS error:
+
+> "You can't open the application 'Multipaste' because this application
+> is not supported on this Mac."
+
+That's macOS's wording for an architecture mismatch (NOT a macOS-version
+mismatch — Multipaste's minimum is still macOS 13 Ventura, and the
+friend who reported this is on 13.7.8). The Multipaste binary literally
+had no x86_64 slice, so the loader refused to start it.
+
+### The fix
+
+`scripts/build.sh` now defaults to building both architectures and
+combining them with `lipo -create`:
+
+```sh
+ARCHS="${MULTIPASTE_BUILD_ARCHS:-arm64 x86_64}"
+for ARCH in $ARCHS; do
+    swift build -c release --arch "$ARCH" --product Multipaste
+    PER_ARCH_BINS+=("$(swift build … --show-bin-path)/Multipaste")
+done
+lipo -create -output "$APP/Contents/MacOS/Multipaste" "${PER_ARCH_BINS[@]}"
+```
+
+After assembly, the script runs `lipo -archs` on the embedded binary
+and **fails the build** if any requested architecture is missing —
+the load-bearing regression guard that makes this bug class impossible
+to ship from a single-arch developer machine again.
+
+Override knob: `MULTIPASTE_BUILD_ARCHS="arm64"` (or `"x86_64"`) for
+single-arch builds during local development if you don't want to wait
+for both. Default is universal.
+
+### What changed
+
+- **`scripts/build.sh`** — rewritten to iterate over `$ARCHS` and use
+  `lipo -create` for the final binary; new verification step at the
+  end fails the build if any requested arch is missing from the
+  output binary.
+- **`Sources/MultipasteCore/Version.swift`** — `2.0.0` → `2.0.1`.
+- **`Resources/Info.plist`** — `CFBundleShortVersionString` `2.0.0`
+  → `2.0.1`, `CFBundleVersion` `15` → `16`. `LSMinimumSystemVersion`
+  unchanged at `13.0` — this is an Intel-compatibility fix, NOT a
+  macOS-version raise.
+- **`README.md`** — hero CTA now reads
+  *"↓ Download v2.0.1 (universal — Intel + Apple Silicon)"*. Easy-install
+  link points at `Multipaste-2.0.1.dmg`. Badge row gained
+  *"Universal (Intel + Apple Silicon)"*. Test count badges 133 → 135
+  (two new BuildScript tests added).
+- **`Tests/MultipasteCoreTests/BuildScriptTests.swift`** — NEW
+  suite, 2 tests:
+    1. `buildShDefaultsToUniversal` — asserts `scripts/build.sh`
+       defines `ARCHS` with the universal default
+       `"${MULTIPASTE_BUILD_ARCHS:-arm64 x86_64}"`.
+    2. `buildShVerifiesEmbeddedArchitectures` — asserts
+       `scripts/build.sh` contains the `lipo -create` step AND the
+       `lipo -archs` post-build verification AND the descriptive
+       failure message. The fix-shape itself is now tested.
+
+### Compatibility
+
+- **Intel Mac users on macOS 13 Ventura or later** — v2.0.1 is the
+  first release that actually opens. Apologies to anyone who tried
+  v2.0.0 and saw the "not supported" error.
+- **Apple Silicon users** — no change in behavior; the universal
+  binary still has an arm64 slice. The DMG is roughly 2× larger
+  (~900 KB instead of ~460 KB) because it now contains both arch
+  slices, but everything else is identical.
+- **Source builders** — single-arch builds still work via the
+  `MULTIPASTE_BUILD_ARCHS` override. Default is universal.
+- **Homebrew tap** — cask bumps to version 2.0.1 with the new
+  sha256 in a follow-up commit to the
+  [NewdlDewdl/homebrew-multipaste](https://github.com/NewdlDewdl/homebrew-multipaste)
+  tap.
+
+The 2.0.0 → 2.0.1 release is feature-identical otherwise — same
+clipboard history, same snippet expansion, same License + Contribution
++ chooser infrastructure. Just runs on Intel now.
+
 ## 2.0.0 — 2026-05-16
 
 Relicensed from MIT to **PolyForm Strict License 1.0.0** — the most

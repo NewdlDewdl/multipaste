@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.0.0 (460 KB DMG)</strong></a><br>
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.0.1 (universal — Intel + Apple Silicon)</strong></a><br>
   <a href="#install">Install</a> ·
   <a href="#keys">Keys</a> ·
   <a href="#snippet-expansion">Snippets</a> ·
@@ -27,13 +27,13 @@ A native clipboard history *and* snippet expander with a global hotkey,
 a picker window, pinning, search, full keyboard navigation, and an
 automatic update check. Built for macOS 13+ (tested on macOS 26 Tahoe).
 
-No subscriptions, no Electron, no telemetry, no account. ~750 KB of
-native Swift in a 460 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
-starts at login.
+No subscriptions, no Electron, no telemetry, no account. ~1.5 MB
+universal Swift binary in a 712 KB DMG (one binary for Intel + Apple
+Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
-**Latest release:** [v2.0.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+**Latest release:** [v2.0.1](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 133 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
+&nbsp;·&nbsp; **Tests:** 135 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
 
 ---
 
@@ -41,8 +41,8 @@ starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-2.0.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
-   from the latest release (~460 KB).
+1. Download **[Multipaste-2.0.1.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+   from the latest release (712 KB universal DMG — runs on both Intel and Apple Silicon).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
    **Open**, then **Open** again in the security warning. *(macOS asks
@@ -200,7 +200,7 @@ plain letters would be swallowed system-wide). Esc cancels recording.
 - Free for personal use + source-available vs Paste / Pastebot / Alfred
   (paid) and Raycast (closed-source + telemetry). Source is on GitHub,
   read it, audit it, file issues against it.
-- Lightweight: ~50 MB RAM idle, ~750 KB binary, no helper processes.
+- Lightweight: ~50 MB RAM idle, ~1.5 MB universal binary, no helper processes.
 
 ¹ Free for noncommercial use. Commercial use requires a separate license
 from the author — email <rohin.agrawal@gmail.com>.
@@ -449,7 +449,7 @@ Coverage:
 | `Contribution`         | 5     | CONTRIBUTING.md exists, CLA contains perpetual/worldwide/royalty-free/irrevocable grant, relicensing-right clause explicitly mentions proprietary closed-source, PolyForm Strict context explained, PR template links to CLA + has confirmation checkboxes + calls out relicensing |
 | `LicensingMetadata`    | 12    | REUSE.toml exists + declares `LicenseRef-PolyForm-Strict-1.0.0` for Sources & Tests, `.licensee.json` exists + valid JSON + declares the SPDX ID, `LICENSES/LicenseRef-PolyForm-Strict-1.0.0.md` exists + content matches LICENSE.md (symlink intact), every `.swift` file under Sources & Tests has SPDX-License-Identifier + SPDX-FileCopyrightText in top 5 lines, Package.swift has SPDX header after `swift-tools-version`, README contains PolyForm badge URL (`polyformproject.org/strict.png`) + canonical license URL + **badge is NOT in the first 30 lines** (regression guard: stops the intimidating "STRICT" logo from migrating back into the intro header above the install instructions) |
 | `IssueChooser`         | 8     | bug_report.yml is a YAML form with required fields (macOS version, Multipaste version, install method, arch, repro) + routes security to email; feature_request.yml has CLA acknowledgment including relicensing-clause callout; chooser config.yml disables blank issues + has security/commercial/Discussions/CONTRIBUTING contact links; old .md template removed; SECURITY.md exists at repo root + documents reporting channel + supported versions |
-| `ReadmePolish`         | 6     | Hero logo file exists at `Resources/icon-256.png` + has valid PNG magic bytes; README intro has centered `<p align="center">` hero with logo (192px width) + meaningful alt text + centered `<h1>Multipaste</h1>`; intro has a quick-nav row with ≥4 section anchors; intro has a bold Download CTA linking to `releases/latest`; **README does NOT contain the stale "built in one session" claim** (or variants like "single sitting" — regression guard); **snippet-expansion section uses a generic `you@example.com` example** rather than the maintainer's personal address (regression guard) |
+| `ReadmePolish`         | 6     | Hero logo file exists at `Resources/icon-256.png` + has valid PNG magic bytes; README intro has centered `<p align="center">` hero with logo (192px width) + meaningful alt text + centered `<h1>Multipaste</h1>`; intro has a quick-nav row with ≥4 section anchors; intro has a bold Download CTA linking to `releases/latest`; **README does NOT contain stale build-duration claims** (case-insensitive scan for one-session / single-sitting variants — regression guard); **snippet-expansion section uses a generic `you@example.com` example** rather than the maintainer's personal address (regression guard) |
 | `VersionConsistency`   | 6     | Version.swift's `MultipasteVersion.value` parses cleanly; Info.plist `CFBundleShortVersionString` agrees with Version.swift; README hero `Download vX.Y.Z` CTA matches; README install section references `Multipaste-X.Y.Z.dmg` matching the canonical version; **no stale `Multipaste-A.B.C.dmg` patterns anywhere in README** (the regression-guard that catches the bug class where Version.swift bumps but the README install link still points at the old DMG); CHANGELOG's latest `## X.Y.Z` entry matches; SECURITY.md supported-versions table mentions the current major series (e.g. `2.0.x`) |
 | **Total**              | **133**| Pure logic; UI is integration-tested manually          |
 
