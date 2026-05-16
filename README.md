@@ -1,13 +1,31 @@
-# Multipaste
+<p align="center">
+  <img src="Resources/icon-256.png" width="192" height="192" alt="Multipaste clipboard icon">
+</p>
 
-**Win+V for macOS.** A native clipboard history *and* snippet expander
-with a global hotkey, a picker window, pinning, search, full keyboard
-navigation, and an automatic update check. Built for macOS 13+ (tested
-on macOS 26 Tahoe).
+<h1 align="center">Multipaste</h1>
 
-```
-Press ⌘⇧V anywhere → picker appears → ↑↓ pick → ↩ paste
-```
+<p align="center">
+  <strong>Win+V for macOS.</strong> Clipboard history <em>and</em> snippet expansion in one tiny native app.
+</p>
+
+<p align="center">
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.0.0 (440 KB DMG)</strong></a><br>
+  <a href="#install">Install</a> ·
+  <a href="#keys">Keys</a> ·
+  <a href="#snippet-expansion">Snippets</a> ·
+  <a href="#how-does-it-compare">Compare</a> ·
+  <a href="#privacy">Privacy</a> ·
+  <a href="#license">License</a> ·
+  <a href="#contributing">Contribute</a>
+</p>
+
+<p align="center"><code>Press ⌘⇧V anywhere → picker appears → ↑↓ pick → ↩ paste</code></p>
+
+---
+
+A native clipboard history *and* snippet expander with a global hotkey,
+a picker window, pinning, search, full keyboard navigation, and an
+automatic update check. Built for macOS 13+ (tested on macOS 26 Tahoe).
 
 No subscriptions, no Electron, no telemetry, no account. ~700 KB of
 native Swift in a 440 KB DMG, runs at ~0% CPU and ~50 MB RAM when idle,
@@ -15,7 +33,7 @@ starts at login.
 
 **Latest release:** [v2.0.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 121 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
+&nbsp;·&nbsp; **Tests:** 125 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later
 
 ---
 
@@ -365,7 +383,7 @@ does not make network calls outside the once-a-day update check
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
   `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 121 unit tests live here (incl. License + Contribution + LicensingMetadata + IssueChooser suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, and SECURITY.md).
+  All testable. 125 unit tests live here (incl. License + Contribution + LicensingMetadata + IssueChooser suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, and SECURITY.md).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -399,7 +417,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test            # runs all 121 unit tests in ~70 ms
+make test            # runs all 125 unit tests in ~70 ms
 ```
 
 Tests use a small custom harness
@@ -431,7 +449,8 @@ Coverage:
 | `Contribution`         | 5     | CONTRIBUTING.md exists, CLA contains perpetual/worldwide/royalty-free/irrevocable grant, relicensing-right clause explicitly mentions proprietary closed-source, PolyForm Strict context explained, PR template links to CLA + has confirmation checkboxes + calls out relicensing |
 | `LicensingMetadata`    | 12    | REUSE.toml exists + declares `LicenseRef-PolyForm-Strict-1.0.0` for Sources & Tests, `.licensee.json` exists + valid JSON + declares the SPDX ID, `LICENSES/LicenseRef-PolyForm-Strict-1.0.0.md` exists + content matches LICENSE.md (symlink intact), every `.swift` file under Sources & Tests has SPDX-License-Identifier + SPDX-FileCopyrightText in top 5 lines, Package.swift has SPDX header after `swift-tools-version`, README contains PolyForm badge URL (`polyformproject.org/strict.png`) + canonical license URL + **badge is NOT in the first 30 lines** (regression guard: stops the intimidating "STRICT" logo from migrating back into the intro header above the install instructions) |
 | `IssueChooser`         | 8     | bug_report.yml is a YAML form with required fields (macOS version, Multipaste version, install method, arch, repro) + routes security to email; feature_request.yml has CLA acknowledgment including relicensing-clause callout; chooser config.yml disables blank issues + has security/commercial/Discussions/CONTRIBUTING contact links; old .md template removed; SECURITY.md exists at repo root + documents reporting channel + supported versions |
-| **Total**              | **121**| Pure logic; UI is integration-tested manually          |
+| `ReadmePolish`         | 4     | Hero logo file exists at `Resources/icon-256.png` + has valid PNG magic bytes; README intro has centered `<p align="center">` hero with logo (192px width) + meaningful alt text + centered `<h1>Multipaste</h1>`; intro has a quick-nav row with ≥4 section anchors; intro has a bold Download CTA linking to `releases/latest` |
+| **Total**              | **125**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -482,7 +501,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 121 unit tests (~70 ms)
+make test          # run all 125 unit tests (~70 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open

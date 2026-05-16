@@ -15,5 +15,6 @@ LicenseTests.registerAll()
 ContributionTests.registerAll()
 LicensingMetadataTests.registerAll()
 IssueChooserTests.registerAll()
+ReadmePolishTests.registerAll()
 
 exit(Int32(runAllTests()))

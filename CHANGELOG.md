@@ -408,6 +408,59 @@ Modified:
 
 The 1.9.0 → 2.0.0 release is otherwise feature-identical.
 
+### README beautification (added post-relicense)
+
+The README intro was a wall of text under a `# Multipaste` h1. Friendly
+to skimmers, but it didn't *look* like a polished macOS app — the
+project icon never appeared, and the entire first screen was prose +
+text badges. This change adds the standard polished-macOS-README
+treatment: centered logo hero, large h1, single-sentence tagline,
+prominent Download CTA, quick-nav row, and the ASCII demo all centered
+above the divider.
+
+Added:
+
+- **`Resources/icon-256.png`** — 256×256 PNG resized from the existing
+  `icon-1024.png` (2048×2048) via `sips`. 13 KB. Used as the hero
+  image in the README; not bundled into the .app (the .app uses the
+  `.icns`).
+
+- **`Tests/MultipasteCoreTests/ReadmePolishTests.swift`** — NEW
+  suite, 4 tests locking the README hero design in so it can't
+  silently regress:
+  1. `logoFileExistsAtExpectedPath` — the file is present and has
+     valid PNG magic bytes (catches a corrupt or wrong-format file).
+  2. `readmeHasCenteredLogoHero` — README intro has the
+     `<p align="center">` hero wrapper, references the logo at
+     `Resources/icon-256.png`, sets an explicit `width="192"`,
+     has meaningful alt text mentioning Multipaste, and is followed
+     by a centered `<h1>Multipaste</h1>`.
+  3. `readmeHasQuickNavLinks` — intro has at least 4 of the 7
+     expected section anchors (Install / Keys / Snippets / Compare
+     / Privacy / License / Contribute), so users can jump without
+     scrolling 700 lines.
+  4. `readmeHasDownloadCallToAction` — intro has a bold "Download"
+     link to `releases/latest`, sized to invite the click.
+
+Modified:
+
+- **`README.md`** — completely restructured top 30 lines. New
+  hero block: centered logo (192×192) → `<h1>Multipaste</h1>` →
+  centered tagline ("**Win+V for macOS.** Clipboard history *and*
+  snippet expansion in one tiny native app.") → bold Download
+  CTA ("↓ Download v2.0.0 (440 KB DMG)") → centered quick-nav row
+  with 7 section links → centered ASCII demo. Below the divider,
+  the existing long-form description and badge row continue as
+  before — long-form unchanged, just demoted from "first thing
+  users see" to "what they read after the hero hooks them."
+
+- **`Tests/MultipasteCoreTests/main.swift`** — registers
+  `ReadmePolishTests.registerAll()`.
+
+- Test count: **125** (was 121).
+
+The 1.9.0 → 2.0.0 release is otherwise feature-identical.
+
 ## 1.9.0 — 2026-05-11
 
 Makes pinning visible. Same semantics — different feel.
