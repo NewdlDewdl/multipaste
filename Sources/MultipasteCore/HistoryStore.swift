@@ -61,17 +61,24 @@ public final class HistoryStore {
         items.filter { ($0.trigger?.isEmpty == false) }
     }
 
-    /// Items in the order the picker should render them.
+    /// Items in the order the picker (and the menu-bar "Recent" list,
+    /// and search results) should render them.
     ///
-    /// - If `pinnedFirst` is `false` (default), this is just `items` — the
-    ///   natural most-recent-first chronological order.
-    /// - If `pinnedFirst` is `true`, pinned items are hoisted to the top
-    ///   while preserving their relative recency. Unpinned items follow
-    ///   in their existing order. The sort is **stable**: relative order
-    ///   inside each group (pinned vs unpinned) is the same as in
-    ///   `items`.
-    public func sortedForDisplay(pinnedFirst: Bool) -> [ClipboardItem] {
-        guard pinnedFirst else { return items }
+    /// Pinned items are **always** hoisted to the top while preserving
+    /// their relative recency; unpinned items follow in their existing
+    /// chronological order. The sort is **stable**: relative order
+    /// inside each group is the same as in `items`.
+    ///
+    /// This used to be opt-in via a `pinnedFirst: Bool` parameter
+    /// (default off). Rohin reported (with a screenshot) that the pin
+    /// button was a no-op in the picker — items he'd pinned still got
+    /// pushed down the list as new content was copied. The fix is to
+    /// drop the parameter entirely: pinning means "show me first" and
+    /// "survive eviction," not just the latter. If you genuinely want
+    /// pure recency order without pinning influence, the storage
+    /// `items` property remains chronological — but for any USER-
+    /// facing surface (picker, menu Recent, search) call this method.
+    public func sortedForDisplay() -> [ClipboardItem] {
         var pinned: [ClipboardItem] = []
         var rest: [ClipboardItem] = []
         for item in items {
@@ -109,14 +116,10 @@ public final class HistoryStore {
 
     // MARK: - Query
 
+    /// Case-insensitive substring search on `preview`. Results are
+    /// always pinned-first (matches the picker's display order).
     public func search(_ query: String) -> [ClipboardItem] {
-        return search(query, pinnedFirst: false)
-    }
-
-    /// Search + optional pinned-first sort. Matches are case-insensitive
-    /// substring on `preview`.
-    public func search(_ query: String, pinnedFirst: Bool) -> [ClipboardItem] {
-        let pool = sortedForDisplay(pinnedFirst: pinnedFirst)
+        let pool = sortedForDisplay()
         let q = query.trimmingCharacters(in: .whitespacesAndNewlines)
         if q.isEmpty { return pool }
         return pool.filter { $0.preview.range(of: q, options: .caseInsensitive) != nil }

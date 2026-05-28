@@ -13,8 +13,8 @@ enum PreferencesTests {
         TestRegistry.register("Preferences/maxHistoryClampedToReasonableRange", maxHistoryClampedToReasonableRange)
         TestRegistry.register("Preferences/hasCompletedFirstRunDefaultsFalse", hasCompletedFirstRunDefaultsFalse)
         TestRegistry.register("Preferences/hasCompletedFirstRunPersists", hasCompletedFirstRunPersists)
-        TestRegistry.register("Preferences/pinnedItemsFirstDefaultsFalse", pinnedItemsFirstDefaultsFalse)
-        TestRegistry.register("Preferences/pinnedItemsFirstPersists", pinnedItemsFirstPersists)
+        TestRegistry.register("Preferences/pinnedItemsFirstAlwaysTrueAfterDeprecation", pinnedItemsFirstAlwaysTrueAfterDeprecation)
+        TestRegistry.register("Preferences/pinnedItemsFirstWritesAreNoOp", pinnedItemsFirstWritesAreNoOp)
         TestRegistry.register("Preferences/autoCopyScreenshotsDefaultsTrue", autoCopyScreenshotsDefaultsTrue)
         TestRegistry.register("Preferences/autoCopyScreenshotsPersists", autoCopyScreenshotsPersists)
         TestRegistry.register("Preferences/autoCopyScreenshotsRoundTripsOff", autoCopyScreenshotsRoundTripsOff)
@@ -77,16 +77,29 @@ enum PreferencesTests {
         try expect(p2.hasCompletedFirstRun)
     }
 
-    static func pinnedItemsFirstDefaultsFalse() throws {
+    /// v2.1.1 deprecated the toggle: pinned items now ALWAYS rise
+    /// to the top. The property remains in the API but is hard-wired
+    /// to `true` so old plists + out-of-tree callers get the truthful
+    /// answer ("yes, pinned items come first").
+    @available(*, deprecated)
+    static func pinnedItemsFirstAlwaysTrueAfterDeprecation() throws {
         let p = Preferences(defaults: freshDefaults())
-        try expect(!p.pinnedItemsFirst,
-                   "default is recency order; pinned-first is opt-in")
+        try expect(p.pinnedItemsFirst,
+                   "after v2.1.1 the deprecated pinnedItemsFirst is always true — pinning hoists unconditionally")
     }
 
-    static func pinnedItemsFirstPersists() throws {
+    /// Writes to the deprecated property must be silently ignored — we
+    /// don't want a stale plist value to override the new universal
+    /// behavior.
+    @available(*, deprecated)
+    static func pinnedItemsFirstWritesAreNoOp() throws {
         let d = freshDefaults()
         let p1 = Preferences(defaults: d)
-        p1.pinnedItemsFirst = true
+        p1.pinnedItemsFirst = false  // attempted disable
+        try expect(p1.pinnedItemsFirst,
+                   "writes must be no-ops post-deprecation; the getter still returns true")
+        // And across re-instantiation, still true (the no-op write
+        // didn't sneak the value into UserDefaults under a different key).
         let p2 = Preferences(defaults: d)
         try expect(p2.pinnedItemsFirst)
     }

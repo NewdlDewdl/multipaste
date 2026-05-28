@@ -157,7 +157,12 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         header.isEnabled = false
         menu.addItem(header)
 
-        let recent = Array(store.items.prefix(9))
+        // Same display order as the picker — pinned items at the top,
+        // then unpinned by recency. Was previously `store.items.prefix(9)`
+        // (raw chronological order), which made the Recent menu disagree
+        // with the picker after a pin and was part of the "pin does
+        // nothing" UX bug Rohin reported.
+        let recent = Array(store.sortedForDisplay().prefix(9))
         if recent.isEmpty {
             let empty = NSMenuItem(title: "  (no items yet)", action: nil, keyEquivalent: "")
             empty.isEnabled = false

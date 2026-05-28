@@ -90,14 +90,23 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: Keys.augmentFileCopiesWithPath) }
     }
 
-    /// When true, the picker hoists pinned items above unpinned ones
-    /// (preserving relative recency within each group). Default off —
-    /// recency-order is what most clipboard managers do and most users
-    /// expect. Opt-in for power users who treat the pinned section as a
-    /// permanent "snippets shelf."
+    /// **Deprecated in v2.1.1 — pinned items are unconditionally
+    /// hoisted to the top of the picker now.** Reads always return
+    /// `true`; writes are silently ignored. The property is kept in
+    /// the public API so old plists with `pinnedItemsFirst` set
+    /// don't trigger decode warnings, and any out-of-tree code that
+    /// reads it gets the truthful answer ("yes, pinned items come
+    /// first").
+    ///
+    /// Why removed: the toggle defaulted to off, which meant the pin
+    /// button was a no-op in the visible UI — items you'd pinned still
+    /// got pushed down the picker as new content was copied. Rohin
+    /// reported this with a screenshot. Pinning now means both "show
+    /// me first" AND "survive eviction," not just the latter.
+    @available(*, deprecated, message: "Pinned items are always hoisted to the top in v2.1.1+. This property always returns true and ignores writes.")
     public var pinnedItemsFirst: Bool {
-        get { defaults.bool(forKey: Keys.pinnedItemsFirst) }
-        set { defaults.set(newValue, forKey: Keys.pinnedItemsFirst) }
+        get { true }
+        set { /* no-op: see deprecation message */ }
     }
 
     /// When true, files saved by macOS's `screencapture` to the user's

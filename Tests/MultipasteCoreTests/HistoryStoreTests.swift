@@ -24,9 +24,13 @@ enum HistoryStoreTests {
         TestRegistry.register("HistoryStore/setTriggerToNilLeavesPinIntact", setTriggerToNilLeavesPinIntact)
         TestRegistry.register("HistoryStore/triggerIsPersisted", triggerIsPersisted)
         TestRegistry.register("HistoryStore/snippetsReturnsOnlyTriggered", snippetsReturnsOnlyTriggered)
-        TestRegistry.register("HistoryStore/sortedForDisplayPinnedFirstFalse", sortedForDisplayPinnedFirstFalse)
-        TestRegistry.register("HistoryStore/sortedForDisplayPinnedFirstTrue", sortedForDisplayPinnedFirstTrue)
+        TestRegistry.register("HistoryStore/sortedForDisplayUnchangedWhenNothingPinned", sortedForDisplayUnchangedWhenNothingPinned)
+        TestRegistry.register("HistoryStore/sortedForDisplayAlwaysHoistsPinned", sortedForDisplayAlwaysHoistsPinned)
         TestRegistry.register("HistoryStore/sortedForDisplayPreservesRelativeOrderWithinGroups", sortedForDisplayPreservesRelativeOrderWithinGroups)
+        TestRegistry.register("HistoryStore/pinningOldItemHoistsItToTop", pinningOldItemHoistsItToTop)
+        TestRegistry.register("HistoryStore/unpinningRestoresChronologicalPosition", unpinningRestoresChronologicalPosition)
+        TestRegistry.register("HistoryStore/searchResultsAreAlwaysPinnedFirst", searchResultsAreAlwaysPinnedFirst)
+        TestRegistry.register("HistoryStore/itemsStaysChronologicalEvenWhenSortedHoists", itemsStaysChronologicalEvenWhenSortedHoists)
     }
 
     private static func makeStore(max: Int = 50) -> (HistoryStore, URL) {
@@ -209,26 +213,24 @@ enum HistoryStoreTests {
         try expectEqual(snippets[0].trigger, ";sig")
     }
 
-    static func sortedForDisplayPinnedFirstFalse() throws {
+    static func sortedForDisplayUnchangedWhenNothingPinned() throws {
         let (store, _) = makeStore()
         store.insert(.text("a"))
         store.insert(.text("b"))
         store.insert(.text("c"))
-        store.togglePin(id: store.items[2].id) // pin "a"
-        // pinnedFirst=false → recency order, unchanged: [c, b, a]
-        let r = store.sortedForDisplay(pinnedFirst: false).map(\.preview)
+        // No pinning → result is just chronological (most recent first).
+        let r = store.sortedForDisplay().map(\.preview)
         try expectEqual(r, ["c", "b", "a"])
     }
 
-    static func sortedForDisplayPinnedFirstTrue() throws {
+    static func sortedForDisplayAlwaysHoistsPinned() throws {
         let (store, _) = makeStore()
         store.insert(.text("a"))
         store.insert(.text("b"))
         store.insert(.text("c"))
         store.togglePin(id: store.items[2].id) // pin "a" (oldest, currently last)
-        // pinnedFirst=true → pinned items hoisted to top in their original
-        // relative order: [a, c, b]
-        let r = store.sortedForDisplay(pinnedFirst: true).map(\.preview)
+        // Pinned items hoisted unconditionally → [a, c, b]
+        let r = store.sortedForDisplay().map(\.preview)
         try expectEqual(r, ["a", "c", "b"])
     }
 
@@ -242,9 +244,83 @@ enum HistoryStoreTests {
         store.togglePin(id: store.items[0].id) // pin "p2" (newest)
         store.togglePin(id: store.items[2].id) // pin "p1"
         // Recency order: [p2, u3, p1, u2, u1]; pinned=[p2,p1], unpinned=[u3,u2,u1]
-        // sortedForDisplay(pinnedFirst: true) = [p2, p1, u3, u2, u1]
-        let r = store.sortedForDisplay(pinnedFirst: true).map(\.preview)
+        // sortedForDisplay() = [p2, p1, u3, u2, u1]
+        let r = store.sortedForDisplay().map(\.preview)
         try expectEqual(r, ["p2", "p1", "u3", "u2", "u1"])
+    }
+
+    /// The Rohin-reported bug, asserted as a regression guard: pin an
+    /// item that's currently in the middle of the picker, then verify
+    /// the next call to sortedForDisplay() puts it at position 0.
+    /// Before v2.1.1 this required `pinnedFirst: true`, which defaulted
+    /// to false — meaning the pin button visibly did nothing.
+    static func pinningOldItemHoistsItToTop() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("first"))   // ends up last
+        store.insert(.text("second"))
+        store.insert(.text("third"))   // newest
+        // Chronological: [third, second, first]. Pin "first" (oldest).
+        store.togglePin(id: store.items[2].id)
+        let r = store.sortedForDisplay().map(\.preview)
+        try expectEqual(r[0], "first",
+                        "pinning an old item must visibly hoist it to the top — that's the whole point of the pin button")
+    }
+
+    static func unpinningRestoresChronologicalPosition() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("first"))
+        store.insert(.text("second"))
+        store.insert(.text("third"))
+        // `items` storage order: [third, second, first] (most-recent-first).
+        // Find "first" by preview so we don't depend on items[i] indexing
+        // surviving sortedForDisplay rearrangements (which it does — the
+        // storage doesn't reorder — but find-by-preview is more honest).
+        let firstId = store.items.first(where: { $0.preview == "first" })!.id
+        store.togglePin(id: firstId)
+        try expectEqual(store.sortedForDisplay().map(\.preview),
+                        ["first", "third", "second"],
+                        "pin hoists to top")
+        // Now unpin by the same id and verify chronological order resumes.
+        store.togglePin(id: firstId)
+        try expectEqual(store.sortedForDisplay().map(\.preview),
+                        ["third", "second", "first"],
+                        "unpin drops back into chronological slot")
+    }
+
+    /// Search results must also be pinned-first. Before v2.1.1 the
+    /// picker reload called `store.search(query, pinnedFirst: prefs…)`
+    /// which respected the off-by-default pinnedFirst pref. After
+    /// v2.1.1, `search(_:)` always returns pinned-first.
+    static func searchResultsAreAlwaysPinnedFirst() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("apple-old"))
+        store.insert(.text("banana"))
+        store.insert(.text("apple-new"))
+        // Pin "apple-old".
+        store.togglePin(id: store.items[2].id)
+        // Search "apple" → both apples match. Pinned must come first.
+        let r = store.search("apple").map(\.preview)
+        try expectEqual(r, ["apple-old", "apple-new"],
+                        "the pinned apple-old must lead the search results, " +
+                        "even though apple-new is more recent")
+    }
+
+    /// Storage order (`items`) stays chronological even though
+    /// `sortedForDisplay()` hoists pinned. This invariant matters for
+    /// eviction (which removes oldest unpinned first), persistence
+    /// (JSON is encoded from `items`), and dedup-on-resurface.
+    static func itemsStaysChronologicalEvenWhenSortedHoists() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("oldest"))
+        store.insert(.text("middle"))
+        store.insert(.text("newest"))
+        store.togglePin(id: store.items[2].id) // pin "oldest"
+        try expectEqual(store.items.map(\.preview),
+                        ["newest", "middle", "oldest"],
+                        "the underlying items array stays chronological")
+        try expectEqual(store.sortedForDisplay().map(\.preview),
+                        ["oldest", "newest", "middle"],
+                        "sortedForDisplay() reorders by pinned-first")
     }
 
     static func insertNotifiesObservers() throws {

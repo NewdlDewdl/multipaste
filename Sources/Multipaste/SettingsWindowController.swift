@@ -91,7 +91,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var pasteOnSelectCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
     private var augmentFileCopiesCheckbox: NSButton!
-    private var pinnedFirstCheckbox: NSButton!
     private var autoCopyScreenshotsCheckbox: NSButton!
     private var maxHistoryField: NSTextField!
     private var maxHistoryStepper: NSStepper!
@@ -126,12 +125,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         augmentCB.state = prefs.augmentFileCopiesWithPath ? .on : .off
         augmentCB.toolTip = "When you copy a file in Finder, Multipaste injects the full path as a plain-text representation so pasting in code editors gives you the path while pasting in chat composers still uploads the file."
         self.augmentFileCopiesCheckbox = augmentCB
-
-        let pinnedCB = NSButton(checkboxWithTitle: "Show pinned items at the top of the picker",
-                                target: self, action: #selector(togglePinnedFirst))
-        pinnedCB.state = prefs.pinnedItemsFirst ? .on : .off
-        pinnedCB.toolTip = "Hoist pinned items above unpinned ones (preserving relative recency). Default off — use pinning as a permanent-shelf affordance."
-        self.pinnedFirstCheckbox = pinnedCB
 
         let screenshotsCB = NSButton(checkboxWithTitle: "Auto-copy screenshots to clipboard",
                                      target: self, action: #selector(toggleAutoCopyScreenshots))
@@ -177,7 +170,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             row(NSView(), augmentHint),
             row(NSView(), screenshotsCB),
             row(NSView(), screenshotsHint),
-            row(NSView(), pinnedCB),
             row(mhLabel, mhField, mhStepper, mhHint),
         ]
         let stack = NSStackView(views: rows)
@@ -213,10 +205,6 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     @objc private func toggleAugmentFileCopies() {
         prefs.augmentFileCopiesWithPath = (augmentFileCopiesCheckbox.state == .on)
-    }
-
-    @objc private func togglePinnedFirst() {
-        prefs.pinnedItemsFirst = (pinnedFirstCheckbox.state == .on)
     }
 
     @objc private func toggleAutoCopyScreenshots() {

@@ -1,5 +1,97 @@
 # Changelog
 
+## 2.1.1 — 2026-05-28
+
+**Hotfix: the pin button now actually does something.** Rohin reported
+(with a screenshot of the picker showing pinned items #1 and #2
+highlighted yellow but stuck at the top only because they were the
+most-recent ⌘C, not because they were pinned) that pinning was a
+visible no-op. The pin button protected against eviction past the
+history cap, but that's invisible — every clipboard manager has a
+history cap, and "your pinned item didn't get evicted" doesn't feel
+like a feature when the item still slides down the list as you ⌘C
+new things.
+
+The fix: pinned items now ALWAYS rise to the top of the picker, the
+"Recent" menu-bar list, and search results. Unconditionally. The
+"Show pinned items at the top of the picker" preference toggle —
+which defaulted OFF — is deprecated; the underlying property is
+hard-wired to return `true` and ignore writes so any pre-existing
+plist with the old false value silently does the right thing on
+upgrade.
+
+### How it works
+
+`HistoryStore.sortedForDisplay(pinnedFirst:)` (previously took a
+Bool, defaulted to false in callers) lost the parameter — it now
+always hoists pinned. `HistoryStore.search(_:pinnedFirst:)` lost
+the parameter too. The storage `items` array stays chronological
+for eviction / persistence / dedup logic; only USER-facing surfaces
+call `sortedForDisplay()`.
+
+`MenuBarController` previously rendered `store.items.prefix(9)` for
+its Recent dropdown — raw chronological order — which made the menu
+disagree with the picker after pinning. Now uses
+`store.sortedForDisplay().prefix(9)` so both surfaces match.
+
+`SettingsWindowController` drops the "Show pinned items at the top
+of the picker" checkbox. The Preferences property remains in the
+API but is `@available(*, deprecated)` and hard-wired to true.
+
+### What changed
+
+- **`Sources/MultipasteCore/HistoryStore.swift`** — `sortedForDisplay`
+  loses the `pinnedFirst` parameter; `search(_:pinnedFirst:)` collapses
+  into a single `search(_:)` that always returns pinned-first results.
+  Storage `items` invariant unchanged (chronological).
+- **`Sources/MultipasteCore/Preferences.swift`** — `pinnedItemsFirst`
+  marked `@available(*, deprecated)`. Getter returns `true`
+  unconditionally; setter is a no-op. Old plists with the value
+  silently do the right thing on next launch.
+- **`Sources/Multipaste/PickerWindow.swift`** — picker reload calls
+  `store.search(query)` without the (removed) `pinnedFirst` argument.
+- **`Sources/Multipaste/MenuBarController.swift`** — Recent dropdown
+  builds from `store.sortedForDisplay().prefix(9)` instead of
+  `store.items.prefix(9)`.
+- **`Sources/Multipaste/SettingsWindowController.swift`** — removes
+  the pinned-first checkbox + its hint + the action selector. General
+  tab is one row shorter.
+- **`Tests/MultipasteCoreTests/HistoryStoreTests.swift`** — pinned-first
+  test suite expanded from 3 → 7 tests: drops the parameter-respecting
+  cases, adds `pinningOldItemHoistsItToTop` (the Rohin-reported regression
+  guard), `unpinningRestoresChronologicalPosition`,
+  `searchResultsAreAlwaysPinnedFirst`,
+  `itemsStaysChronologicalEvenWhenSortedHoists`.
+- **`Tests/MultipasteCoreTests/PreferencesTests.swift`** — two pinned-first
+  tests reframed for the deprecation: getter always-true,
+  setter no-op.
+- **`Sources/MultipasteCore/Version.swift`** — 2.1.0 → 2.1.1.
+- **`Resources/Info.plist`** — `CFBundleShortVersionString` 2.1.0 →
+  2.1.1, `CFBundleVersion` 18 → 19.
+- **`README.md`** — drops "Show pinned items at top" docs from the
+  Settings section; the Keys section already mentions ⌘P pin/unpin
+  — added a one-line explainer ("Pinned items always show first in
+  the picker") next to it. Test count headline 199 → 203.
+
+### Test count
+
+199 → 203 (+4 net: +7 new HistoryStore pin-related tests, -3 old
+parameter-respecting tests, +2 new deprecated-Preferences tests, -2
+old toggle-persistence tests). All pass in ~0.28s.
+
+### Compatibility
+
+- **Users who never touched the toggle** (the default, off) get the
+  new pinned-first behavior automatically — this is the fix.
+- **Users who explicitly turned it ON** in 2.1.0: same behavior they
+  had, the toggle just isn't visible anymore. Nothing lost.
+- **Users who explicitly turned it OFF** (e.g. because they wanted
+  pure-recency): the old preference is ignored. If this is you and
+  you genuinely want pure recency, open an issue — but the design
+  call here is that pin's "protect from eviction" survives without
+  hoisting being optional, and hoisting is what users mean when they
+  click the pin button.
+
 ## 2.1.0 — 2026-05-28
 
 **Headline #1 — auto-copy screenshots to clipboard.** macOS's default

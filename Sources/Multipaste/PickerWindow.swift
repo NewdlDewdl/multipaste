@@ -195,7 +195,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     }
 
     private func reload() {
-        filtered = store.search(query, pinnedFirst: prefs.pinnedItemsFirst)
+        filtered = store.search(query)
         tableView.reloadData()
         if filtered.isEmpty {
             // nothing to select
