@@ -13,6 +13,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private let store: HistoryStore
     private let onHotkeyChanged: (Hotkey) -> Void
     private let onLaunchAtLoginChanged: (Bool) -> Void
+    private let onAutoCopyScreenshotsChanged: (Bool) -> Void
 
     private var window: NSWindow!
     private var storeToken: HistoryStore.Token?
@@ -20,11 +21,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     init(prefs: Preferences,
          store: HistoryStore,
          onHotkeyChanged: @escaping (Hotkey) -> Void,
-         onLaunchAtLoginChanged: @escaping (Bool) -> Void) {
+         onLaunchAtLoginChanged: @escaping (Bool) -> Void,
+         onAutoCopyScreenshotsChanged: @escaping (Bool) -> Void = { _ in }) {
         self.prefs = prefs
         self.store = store
         self.onHotkeyChanged = onHotkeyChanged
         self.onLaunchAtLoginChanged = onLaunchAtLoginChanged
+        self.onAutoCopyScreenshotsChanged = onAutoCopyScreenshotsChanged
         super.init()
         buildWindow()
     }
@@ -89,6 +92,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var launchAtLoginCheckbox: NSButton!
     private var augmentFileCopiesCheckbox: NSButton!
     private var pinnedFirstCheckbox: NSButton!
+    private var autoCopyScreenshotsCheckbox: NSButton!
     private var maxHistoryField: NSTextField!
     private var maxHistoryStepper: NSStepper!
 
@@ -129,6 +133,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         pinnedCB.toolTip = "Hoist pinned items above unpinned ones (preserving relative recency). Default off — use pinning as a permanent-shelf affordance."
         self.pinnedFirstCheckbox = pinnedCB
 
+        let screenshotsCB = NSButton(checkboxWithTitle: "Auto-copy screenshots to clipboard",
+                                     target: self, action: #selector(toggleAutoCopyScreenshots))
+        screenshotsCB.state = prefs.autoCopyScreenshots ? .on : .off
+        screenshotsCB.toolTip = "When macOS saves a screenshot to disk (⌘⇧3, ⌘⇧4, ⌘⇧5), Multipaste copies it to the clipboard the moment it appears. The file still saves to your Desktop (or wherever you've configured screencapture to save) — this just removes the need to remember to hold ⌃ to get it in the clipboard too."
+        self.autoCopyScreenshotsCheckbox = screenshotsCB
+
         let mhLabel = NSTextField(labelWithString: "History size:")
         let mhField = NSTextField()
         mhField.stringValue = "\(prefs.maxHistory)"
@@ -154,12 +164,19 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         augmentHint.font = .systemFont(ofSize: 11)
         augmentHint.textColor = .secondaryLabelColor
 
+        let screenshotsHint = NSTextField(labelWithString:
+            "Every screenshot lands in your clipboard automatically — no more ⌃⌘⇧4.")
+        screenshotsHint.font = .systemFont(ofSize: 11)
+        screenshotsHint.textColor = .secondaryLabelColor
+
         let rows: [NSView] = [
             row(hkLabel, hkField, hkHint),
             row(NSView(), pasteCB),
             row(NSView(), launchCB),
             row(NSView(), augmentCB),
             row(NSView(), augmentHint),
+            row(NSView(), screenshotsCB),
+            row(NSView(), screenshotsHint),
             row(NSView(), pinnedCB),
             row(mhLabel, mhField, mhStepper, mhHint),
         ]
@@ -200,6 +217,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     @objc private func togglePinnedFirst() {
         prefs.pinnedItemsFirst = (pinnedFirstCheckbox.state == .on)
+    }
+
+    @objc private func toggleAutoCopyScreenshots() {
+        let on = (autoCopyScreenshotsCheckbox.state == .on)
+        prefs.autoCopyScreenshots = on
+        onAutoCopyScreenshotsChanged(on)
     }
 
     @objc private func toggleLaunchAtLogin() {

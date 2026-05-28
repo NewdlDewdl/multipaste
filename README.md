@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.0.2 (universal — Intel + Apple Silicon)</strong></a><br>
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.1.0 (universal — Intel + Apple Silicon)</strong></a><br>
   <a href="#install">Install</a> ·
   <a href="#keys">Keys</a> ·
   <a href="#snippet-expansion">Snippets</a> ·
@@ -31,9 +31,9 @@ No subscriptions, no Electron, no telemetry, no account. ~1.5 MB
 universal Swift binary in a 712 KB DMG (one binary for Intel + Apple
 Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
-**Latest release:** [v2.0.2](https://github.com/NewdlDewdl/multipaste/releases/latest)
+**Latest release:** [v2.1.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 144 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
+&nbsp;·&nbsp; **Tests:** 199 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
 
 ---
 
@@ -41,7 +41,7 @@ Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-2.0.2.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-2.1.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (712 KB universal DMG — runs on both Intel and Apple Silicon).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
@@ -101,6 +101,99 @@ In the picker:
 | type anything      | Filter the history (case-insensitive)                           |
 
 The default global hotkey is `⌘⇧V`. Change it in **Preferences → General → Hotkey**.
+
+---
+
+## Screenshots → clipboard
+
+Press ⌘⇧3 / ⌘⇧4 / ⌘⇧5 like you always have. macOS still saves the file
+to your Desktop (or wherever you've configured `screencapture` to
+save). Multipaste now ALSO copies it to the clipboard the moment it
+appears — so the screenshot is one ⌘V away in Slack / iMessage /
+chat composers, and it shows up in the picker (`⌘⇧V`) alongside
+everything else.
+
+No more remembering ⌃ — the modifier macOS makes you hold to get the
+screenshot on the clipboard. (Quick: do you remember if it's ⌃⌘⇧3 or
+⌘⌃⇧3 right now? Most people don't, which is the whole point.)
+
+**How it works**: when you launch Multipaste, it reads
+`defaults read com.apple.screencapture` to find your configured save
+location (default `~/Desktop`) and filename prefix (default
+`Screenshot`). It opens that directory with `O_EVTONLY` and attaches a
+`DispatchSource.makeFileSystemObjectSource` watcher. On each
+directory-mtime bump, it diffs against the baseline of paths it
+already knew about and pulls out anything new whose name matches the
+screenshot pattern — then reads the file and writes it to
+`NSPasteboard.general` as PNG (and TIFF as fallback). The existing
+clipboard monitor polls `changeCount` every 300 ms and inserts the
+image into history just like any other ⌘C.
+
+**Custom configurations are respected**:
+- `defaults write com.apple.screencapture location ~/Pictures/Screenshots`
+  → Multipaste watches your Pictures folder instead.
+- `defaults write com.apple.screencapture name "MyShot"` → Multipaste
+  matches `MyShot 2026-...` filenames.
+- `defaults write com.apple.screencapture type jpg` (or `heic`, etc.)
+  → Multipaste reads JPEG/HEIC/TIFF/PDF and publishes them on the
+  clipboard.
+
+After a `defaults write`, quit & relaunch Multipaste so the watcher
+picks up the new location. (We don't auto-detect `defaults write`
+because there's no notification path for it; the cost of a relaunch
+is one menu click and it converges immediately.)
+
+**Privacy + permissions**: on first launch after 2.1.0, macOS prompts
+"Multipaste would like to access files in your Desktop folder" (or
+wherever your screenshot location is). This is a one-time TCC prompt
+— Allow once and the watcher works forever. If you Deny, the watcher
+silently does nothing and logs the denial to
+`~/Library/Logs/Multipaste/multipaste.log`; the rest of the app
+continues to work. **Multipaste never reads files outside the
+screenshot directory**, never uploads anything, never makes a network
+call about your screenshots. Audit: `grep -rn ScreenshotWatcher
+Sources/` — every read is local, every write goes only to
+`NSPasteboard.general`.
+
+**Pause Monitoring**: pausing the clipboard monitor (menu bar →
+"Pause Monitoring") still lets screenshots land on the OS clipboard
+for downstream ⌘V — it just doesn't add them to Multipaste's history.
+That matches the existing pause semantics for regular ⌘C events:
+the clipboard receives the write at the OS level, only our own
+bookkeeping is suppressed.
+
+Toggle off in **Preferences → General → "Auto-copy screenshots to
+clipboard"** if you'd rather have the historical behavior. Default on
+because the feature is the value prop — and because it's strictly
+additive (the screenshot still saves to disk exactly as before; we
+just *also* put it on the clipboard).
+
+**Verifying it works on your machine** (60 seconds):
+
+```sh
+# 1. Tail the log — leave this running in a separate terminal.
+tail -F ~/Library/Logs/Multipaste/multipaste.log
+
+# 2. Take a screenshot the normal way:
+#    ⌘⇧3 (full screen) — or ⌘⇧4 + region — or ⌘⇧5 + UI.
+
+# 3. The log should print, within ~50 ms:
+#    [multipaste 2.1.0 pid=N] ScreenshotWatcher: copied Screenshot 2026-...png (123456 bytes, 2 representations) to pasteboard
+
+# 4. Open the picker (⌘⇧V). The screenshot should be the topmost item.
+
+# 5. ⌘V into any text/chat composer — you should paste the image.
+```
+
+If you don't see the log line:
+- Check Preferences → General — is "Auto-copy screenshots to clipboard"
+  on? (It is by default; verify it wasn't turned off.)
+- Check Diagnostics… in the menu — does it report the watcher attached
+  successfully?
+- Check the log for `ScreenshotWatcher: failed to attach watcher at
+  …` — that's the macOS-denied-Desktop-access case. Open System
+  Settings → Privacy & Security → Files and Folders → find Multipaste
+  → enable Desktop.
 
 ---
 
@@ -383,7 +476,7 @@ does not make network calls outside the once-a-day update check
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
   `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 144 unit tests live here (incl. License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
+  All testable. 199 unit tests live here (incl. ScreenshotDetector for the screenshots-to-clipboard feature; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -417,9 +510,28 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test            # runs all 144 unit tests in ~70 ms
-make verify-app      # verifies the built .app: universal binary + codesign + plist
+make test                    # runs all 199 unit tests in ~330 ms
+make smoke-test              # end-to-end integration test of the screenshot pipeline
+make preview-update-dialog   # visually preview the "vX.Y.Z is available" dialog
+make verify-app              # verifies the built .app: universal binary + codesign + plist
 ```
+
+`make smoke-test` runs `scripts/screenshot-smoke-test.swift` — a
+self-contained Swift script that creates a temp directory, attaches a
+`DispatchSourceFileSystemObject` watcher, drops a synthetic
+`Screenshot YYYY-MM-DD at H.MM.SS AM.png` into it, verifies the
+watcher fires, and confirms a private `NSPasteboard` round-trips the
+image data. Real macOS APIs, no mocks; doesn't touch the user's real
+screenshot location or system clipboard.
+
+`make preview-update-dialog` runs `scripts/preview-update-dialog.swift`
+— shows the actual "Multipaste vX.Y.Z is available" dialog populated
+with the literal v2.0.2 CHANGELOG markdown that produced the bug Rohin
+reported (raw `##`, `**`, ``` ` ```, `>`). Click "Looks good" if the
+markdown rendered properly; click "Looks broken" otherwise. Use this
+after editing `MarkdownAttributedString.render` or
+`ReleaseNotesFormatter.summary` to make sure the visual output is
+still correct.
 
 Tests use a small custom harness
 (`Tests/MultipasteCoreTests/TestHarness.swift`) that runs as
@@ -443,9 +555,12 @@ Coverage:
 | `SemanticVersion`      | 11    | v-prefix, garbage rejection, two-component rejection, ordering with double-digit components |
 | `UpdateChecker`        | 6     | up-to-date, update-available, downgrade ignored, skipped-version, GitHub JSON parse, error on missing fields |
 | `PasteboardAugmenter`  | 7     | path-text single/multi/empty, augment-when-nil/empty/whitespace, don't-clobber-real-text |
+| `ScreenshotDetector`   | 32    | default macOS PNG name; jpg/jpeg/tiff/tif/heic/pdf accepted; uppercase ext; custom prefix matches/doesn't-match-default; underscore-joined names; standalone `Screenshot.png`; rejection of random files / dotfiles / .txt / non-prefix PNGs / movies; empty filename; empty prefix; extensionless; word-boundary check (`Screenshots` ≠ `Screenshot`); resolveLocation default/absolute/tilde/empty/whitespace/nil; resolvePrefix default/custom/empty/whitespace/trim; filterNewScreenshots basic/dedup/non-matches/custom-prefix/empty-dir |
+| `ReleaseNotesFormatter` | 20  | `summary(from:)` strips `## VERSION` header, stops at first `### `, stops at second `## ` (multi-entry input), handles no-header / empty input, strips trailing blank lines, preserves inline markdown; `cleanPlainText(from:)` strips bold/italic/inline-code/headers/blockquote/links/converts bullets to •; conservative on unmatched delimiters; **v2.0.2-dialog-bug regression guard** (the literal markdown screenshot Rohin reported — no `##` / `**` / backtick sigils may survive a render pass) |
 | `TabNavigation`        | 9     | search→row, between-rows, clamp at last row, Shift+Tab edges, empty list, single-row, three-row full traversal |
 | `HistoryStore` (pinned-first) | 3 | pinnedFirst=false preserves recency, pinnedFirst=true hoists pinned, within-group order preserved |
 | `Preferences` (pinned-first)  | 2 | default false, persistence |
+| `Preferences` (auto-copy screenshots) | 3 | default ON (the feature ships on), persistence, off↔on round trip |
 | `License`              | 13    | LICENSE.md path + `.md` extension regression-guard, PolyForm Strict 1.0.0 title + URL, project copyright header + commercial-license email, the Strict-defining no-distribution/no-derivatives clause, NC / Personal / NC-Org sections, Patent Defense, 32-day cure, warranty disclaimer, absence of MIT/AGPL/GPL/Affero, absence of PolyForm Noncommercial (wrong variant), absence of stray bare-LICENSE, line-count range, contribution pointer |
 | `Contribution`         | 5     | CONTRIBUTING.md exists, CLA contains perpetual/worldwide/royalty-free/irrevocable grant, relicensing-right clause explicitly mentions proprietary closed-source, PolyForm Strict context explained, PR template links to CLA + has confirmation checkboxes + calls out relicensing |
 | `LicensingMetadata`    | 12    | REUSE.toml exists + declares `LicenseRef-PolyForm-Strict-1.0.0` for Sources & Tests, `.licensee.json` exists + valid JSON + declares the SPDX ID, `LICENSES/LicenseRef-PolyForm-Strict-1.0.0.md` exists + content matches LICENSE.md (symlink intact), every `.swift` file under Sources & Tests has SPDX-License-Identifier + SPDX-FileCopyrightText in top 5 lines, Package.swift has SPDX header after `swift-tools-version`, README contains PolyForm badge URL (`polyformproject.org/strict.png`) + canonical license URL + **badge is NOT in the first 30 lines** (regression guard: stops the intimidating "STRICT" logo from migrating back into the intro header above the install instructions) |
@@ -454,7 +569,7 @@ Coverage:
 | `VersionConsistency`   | 6     | Version.swift's `MultipasteVersion.value` parses cleanly; Info.plist `CFBundleShortVersionString` agrees with Version.swift; README hero `Download vX.Y.Z` CTA matches; README install section references `Multipaste-X.Y.Z.dmg` matching the canonical version; **no stale `Multipaste-A.B.C.dmg` patterns anywhere in README** (the regression-guard that catches the bug class where Version.swift bumps but the README install link still points at the old DMG); CHANGELOG's latest `## X.Y.Z` entry matches; SECURITY.md supported-versions table mentions the current major series (e.g. `2.0.x`) |
 | `BuildScript`          | 4     | `scripts/build.sh` defaults to `ARCHS="${MULTIPASTE_BUILD_ARCHS:-arm64 x86_64}"` (so a fresh build is universal — **fixes the v2.0.0 Intel-can't-open bug**); script contains `lipo -create` step AND a `lipo -archs` post-build verification that fails the build if any requested arch is missing; the in-DMG `READ ME FIRST.txt` heredoc in `scripts/dmg.sh` uses **control-click / right-click → Open**, NOT just "double-click Multipaste" (fixes the v2.0.1 in-DMG-readme bug where users hit a Gatekeeper dialog with no Open button); the heredoc mentions System Settings → Privacy & Security as the macOS 15 Sequoia fallback |
 | `InfoPlist`            | 7     | CFBundleIdentifier in Info.plist matches Swift's `MultipasteVersion.bundleIdentifier` (drift breaks every TCC grant + Login Item + preference + launch agent — anything keyed by bundle ID); CFBundlePackageType is `APPL`; NSPrincipalClass is `NSApplication`; LSUIElement is true (menubar-only, no Dock icon); LSMinimumSystemVersion is `13.0`; NSAppleEventsUsageDescription present + non-empty + mentions Multipaste/paste; NSHumanReadableCopyright references PolyForm Strict + commercial-license email (Finder Get Info shows the right contact) |
-| **Total**              | **144**| Pure logic; UI is integration-tested manually          |
+| **Total**              | **199**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -468,14 +583,17 @@ README.md  LICENSE.md  CHANGELOG.md
 Sources/
   MultipasteCore/      ← testable, pure Swift:
                           ClipboardItem  HistoryStore  Preferences
-                          SnippetMatcher  SemanticVersion  UpdateChecker
-                          Version
+                          PasteboardAugmenter  ReleaseNotesFormatter
+                          ScreenshotDetector  SemanticVersion
+                          SnippetMatcher  TabNavigation
+                          UpdateChecker  Version
   Multipaste/          ← AppKit / system:
                           AppDelegate  AppPaths  ClipboardMonitor
                           Diagnostics  HotKeyManager  HotkeyRecorderField
-                          LoginAgent  LoginItem  MenuBarController
-                          Paster  Permissions  PermissionMonitor
-                          PickerWindow  SettingsWindowController
+                          LoginAgent  LoginItem  MarkdownAttributedString
+                          MenuBarController  Paster  Permissions
+                          PermissionMonitor  PickerWindow
+                          ScreenshotWatcher  SettingsWindowController
                           SingleInstance  SnippetEngine  ThumbnailCache
                           UpdateService  WelcomeWindow  main.swift
 
@@ -505,7 +623,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 144 unit tests (~70 ms)
+make test          # run all 199 unit tests (~330 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -730,5 +848,13 @@ custom test harness, DMG installer, Homebrew tap, GitHub releases,
 update checker, four-bug forensic deep dive. v2.0.0 added source-
 available PolyForm Strict licensing with full SPDX/REUSE compliance,
 a Contributor License Agreement, an issue-template chooser, SECURITY.md,
-and 133 tests covering every artifact (including this README). Search
-before building. Test before shipping. Boil the ocean.
+and 133 tests covering every artifact (including this README). v2.1.0
+added auto-copy of screenshots (every ⌘⇧3 / ⌘⇧4 / ⌘⇧5 lands on the
+clipboard automatically — no more ⌃ modifier to remember, no more
+dragging files out of Finder) AND fixed the update-dialog bug where
+the painstakingly-formatted CHANGELOG markdown was rendered as raw
+`##` / `**` / ``` ` ``` sigils because `NSAlert.informativeText`
+doesn't render markdown — now uses a styled `NSAttributedString` in
+a scrollable accessory view, so users see bold + monospaced code +
+links the way the changelog meant them. 199 tests now. Search before
+building. Test before shipping. Boil the ocean.

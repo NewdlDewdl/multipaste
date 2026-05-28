@@ -1,5 +1,169 @@
 # Changelog
 
+## 2.1.0 — 2026-05-28
+
+**Headline #1 — auto-copy screenshots to clipboard.** macOS's default
+screenshot workflow (⌘⇧3, ⌘⇧4, ⌘⇧5) saves to disk and only copies to the
+clipboard when you remember to hold ⌃ (⌃⌘⇧4 etc.). Most people don't —
+they screenshot, then drag the file out of Finder into Slack/iMessage/
+chat. Now Multipaste auto-copies every screenshot to the clipboard the
+moment macOS writes it, so it lands in your history alongside every
+other ⌘C and you can just press ⌘V — no extra keystrokes to remember.
+
+**Headline #2 — the "Multipaste vX.Y.Z is available" dialog now
+renders markdown properly.** Rohin reported (with a screenshot) that
+the v2.0.2 update dialog showed the literal release-notes markdown as
+plain text — `## 2.0.2 — 2026-05-16`, `**in-DMG `READ ME FIRST.txt`**`,
+`### The bug`, `>` blockquote markers all visible as raw sigils. The
+fix is two-pronged:
+- `ReleaseNotesFormatter.summary(from:)` (in `MultipasteCore`)
+  extracts the **user-facing** portion of the release-notes markdown
+  — strips the `## VERSION` header, stops at the first `### `
+  engineer-detail subsection. CHANGELOG-author convention going
+  forward: put the user-facing summary first, use `### …`
+  subsections for "How it works" / "What changed" / etc.
+- `MarkdownAttributedString.render(_:)` (in the Multipaste exec
+  target) converts inline markdown — `**bold**`, `*italic*`,
+  ``` `code` ```, `[link](url)` — into a styled `NSAttributedString`.
+  Bold → bold font, italic → italic font, inline code → monospaced
+  font + subtle background tint, links → blue + underline + clickable.
+- `UpdateService.surfaceUpdate(…)` now shows that styled string in
+  a scrollable, non-editable `NSTextView` inside the alert's
+  `accessoryView` (instead of the plain-text-only `informativeText`).
+
+This was an embarrassing bug — the painstakingly-formatted CHANGELOG
+entries that exist precisely to give users a clear "what's new" were
+being displayed as markdown source code in the one place users would
+actually read them.
+
+### How it works
+
+1. On launch, read `defaults read com.apple.screencapture` to find the
+   user's configured screenshot location (default `~/Desktop`) and
+   filename prefix (default `"Screenshot"`).
+2. Open the directory with `open(O_EVTONLY)` and attach a
+   `DispatchSource.makeFileSystemObjectSource` watcher. On each
+   directory-mtime bump, diff the listing against a baseline of paths
+   already-seen.
+3. For each NEW file whose name matches the screenshot pattern (any of
+   `Screenshot 2026-05-28 at 10.13.42 AM.png`,
+   `Screenshot_2026-05-28_at_10.13.42.png`, or `Screenshot.png`),
+   read the bytes and write to `NSPasteboard.general` as PNG (and TIFF
+   as fallback). The existing `ClipboardMonitor` polls `changeCount` at
+   300ms and inserts the image into history — no new history pipeline
+   needed.
+
+Why `DispatchSource` over `FSEvents`: for a single directory at low
+event rate, the C-API ceremony of `FSEventStreamCreate` (retained
+context pointers, global callbacks) isn't worth it. The
+`makeFileSystemObjectSource` path is two screens of Swift instead of
+six, and uses the same kqueue-backed kernel mechanism underneath.
+
+Why we baseline at start: the user may already have hundreds of
+existing screenshots on the Desktop when Multipaste launches. We do
+NOT want to copy those — they're old. So we snapshot the directory at
+`start()` and only react to additions from that point on.
+
+### What changed
+
+- **`Sources/MultipasteCore/ScreenshotDetector.swift`** (new) — pure
+  helpers for filename-pattern matching (`isLikelyScreenshot`), macOS
+  preference resolution (`resolveLocation`, `resolvePrefix`), and the
+  diff-against-baseline core logic (`filterNewScreenshots`). 32 unit
+  tests pin every branch.
+- **`Sources/Multipaste/ScreenshotWatcher.swift`** (new) — AppKit-bound
+  wrapper: opens the directory with `O_EVTONLY`, attaches a
+  `DispatchSourceFileSystemObject`, calls into `ScreenshotDetector`
+  on each event, and writes the matched files to
+  `NSPasteboard.general`. Logs to `~/Library/Logs/Multipaste/multipaste.log`
+  for debuggability.
+- **`Sources/MultipasteCore/Preferences.swift`** — adds
+  `autoCopyScreenshots` toggle, default ON. The whole point of the
+  feature is to be on, so we ship it on; users who don't want it can
+  flip the checkbox in Preferences → General.
+- **`Sources/Multipaste/AppDelegate.swift`** — wires the watcher into
+  the app lifecycle alongside `ClipboardMonitor`: `start()` on launch,
+  `stop()` on terminate, `reloadSettings()` on toggle.
+- **`Sources/Multipaste/SettingsWindowController.swift`** — new
+  checkbox "Auto-copy screenshots to clipboard" + a hint line; the
+  toggle bounces the watcher via a callback to AppDelegate.
+- **`Tests/MultipasteCoreTests/ScreenshotDetectorTests.swift`** (new)
+  — 32 tests covering: default English `.png` naming, every accepted
+  extension (png/jpg/jpeg/tiff/tif/heic/pdf), uppercase-extension
+  tolerance, the underscore-separator variant some third-party tools
+  produce, the standalone-prefix corner case (`Screenshot.png`),
+  rejection of dotfile temp files, custom-prefix matching, location
+  resolution with tilde / absolute / empty / whitespace values,
+  custom-name preference, and the diff-against-baseline filter.
+- **`Tests/MultipasteCoreTests/PreferencesTests.swift`** — 3 new tests
+  for the `autoCopyScreenshots` toggle: default-on, persistence,
+  off→on round trip.
+- **`Sources/MultipasteCore/ReleaseNotesFormatter.swift`** (new) —
+  pure helpers for shaping CHANGELOG markdown into the user-facing
+  summary (`summary(from:)`) + a clean-plain-text fallback
+  (`cleanPlainText(from:)`). Drops the `## VERSION` header, stops at
+  the first `### ` engineer-detail subsection.
+- **`Sources/Multipaste/MarkdownAttributedString.swift`** (new) —
+  AppKit-bound inline-markdown renderer using Foundation's
+  `AttributedString(markdown:)` parser. Translates
+  `inlinePresentationIntent` runs into bold / italic / monospaced
+  (code) / link styling on an `NSAttributedString` ready for an
+  `NSTextView`.
+- **`Sources/Multipaste/UpdateService.swift`** — `surfaceUpdate(…)`
+  now extracts the summary, renders the markdown, and shows it in
+  a scrollable, non-editable `NSTextView` inside the alert's
+  `accessoryView`. The plain-text `informativeText` is now just a
+  single "You're running X.Y.Z. Here's what's new:" line.
+- **`Tests/MultipasteCoreTests/ReleaseNotesFormatterTests.swift`**
+  (new) — 20 tests covering every branch of both helpers, including
+  a regression guard that exercises the literal v2.0.2 CHANGELOG
+  markdown Rohin reported in the dialog screenshot.
+- **`Tests/MultipasteCoreTests/PreferencesTests.swift`** — 3 new tests
+  for the `autoCopyScreenshots` toggle: default-on, persistence,
+  off→on round trip.
+- **`Tests/MultipasteCoreTests/main.swift`** — registers the new
+  `ScreenshotDetector` and `ReleaseNotesFormatter` suites.
+- **`scripts/screenshot-smoke-test.swift`** (new) — end-to-end
+  integration smoke test for the screenshot-to-clipboard pipeline.
+- **`scripts/preview-update-dialog.swift`** (new) — visual preview
+  of the update dialog that pops it up with the literal v2.0.2
+  CHANGELOG markdown for inspection.
+- **`Makefile`** — adds `smoke-test` and `preview-update-dialog`
+  targets.
+- **`Sources/MultipasteCore/Version.swift`** — 2.0.2 → 2.1.0.
+- **`Resources/Info.plist`** — `CFBundleShortVersionString` 2.0.2 →
+  2.1.0, `CFBundleVersion` 17 → 18.
+- **`README.md`** — new "Screenshots → clipboard" section above
+  "File copy → path text"; hero CTA + Easy-install link bumped to
+  `Multipaste-2.1.0.dmg`; test-count headline bumped 144 → 199;
+  test-coverage table grew with new `ScreenshotDetector` and
+  `ReleaseNotesFormatter` rows.
+- **`SECURITY.md`** — supported-versions table now lists `2.1.x` as
+  the current release and `2.0.x` as best-effort.
+
+### Test count
+
+144 → 199 (+32 ScreenshotDetector, +3 Preferences extensions,
++20 ReleaseNotesFormatter). All tests pass in ~0.3s on Apple Silicon.
+
+### Compatibility
+
+- **Existing users**: prefs default to ON. Granted Accessibility
+  carries across the version bump (the designated requirement is by
+  bundle ID, not cdhash — see "TCC indexes by cdhash" in the
+  "bugs we fixed" section of README). No re-grant needed.
+- **First-run Desktop access prompt**: on first launch after 2.1.0,
+  macOS prompts "Multipaste would like to access files in your Desktop
+  folder" (or whatever your screenshot location is). This is a TCC
+  prompt for the new directory-read; granting once is permanent.
+  Denying it makes the watcher silently no-op (logged in
+  `multipaste.log`), the rest of the app works normally.
+- **Pause Monitoring** menu item: pauses history insertion but does
+  NOT pause the screenshot watcher. The screenshot still lands on the
+  clipboard for downstream ⌘V; it just doesn't enter history. This
+  matches the existing pause semantics (the OS-level clipboard write
+  still happens; we only suppress our own bookkeeping).
+
 ## 2.0.2 — 2026-05-16
 
 Hotfix: the **in-DMG `READ ME FIRST.txt`** told users to double-click

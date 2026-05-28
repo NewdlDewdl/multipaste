@@ -15,6 +15,9 @@ enum PreferencesTests {
         TestRegistry.register("Preferences/hasCompletedFirstRunPersists", hasCompletedFirstRunPersists)
         TestRegistry.register("Preferences/pinnedItemsFirstDefaultsFalse", pinnedItemsFirstDefaultsFalse)
         TestRegistry.register("Preferences/pinnedItemsFirstPersists", pinnedItemsFirstPersists)
+        TestRegistry.register("Preferences/autoCopyScreenshotsDefaultsTrue", autoCopyScreenshotsDefaultsTrue)
+        TestRegistry.register("Preferences/autoCopyScreenshotsPersists", autoCopyScreenshotsPersists)
+        TestRegistry.register("Preferences/autoCopyScreenshotsRoundTripsOff", autoCopyScreenshotsRoundTripsOff)
     }
 
     private static func freshDefaults() -> UserDefaults {
@@ -86,5 +89,32 @@ enum PreferencesTests {
         p1.pinnedItemsFirst = true
         let p2 = Preferences(defaults: d)
         try expect(p2.pinnedItemsFirst)
+    }
+
+    static func autoCopyScreenshotsDefaultsTrue() throws {
+        let p = Preferences(defaults: freshDefaults())
+        try expect(p.autoCopyScreenshots,
+                   "auto-copy screenshots must default ON — the feature is the value prop")
+    }
+
+    static func autoCopyScreenshotsPersists() throws {
+        let d = freshDefaults()
+        let p1 = Preferences(defaults: d)
+        p1.autoCopyScreenshots = false
+        let p2 = Preferences(defaults: d)
+        try expect(!p2.autoCopyScreenshots,
+                   "opting out must survive across app launches")
+    }
+
+    static func autoCopyScreenshotsRoundTripsOff() throws {
+        // Catch any "did you spell the key the same way in get vs set?" bug.
+        let d = freshDefaults()
+        let p1 = Preferences(defaults: d)
+        p1.autoCopyScreenshots = false
+        try expect(!p1.autoCopyScreenshots)
+        p1.autoCopyScreenshots = true
+        try expect(p1.autoCopyScreenshots)
+        let p2 = Preferences(defaults: d)
+        try expect(p2.autoCopyScreenshots)
     }
 }

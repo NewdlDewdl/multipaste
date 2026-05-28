@@ -1,9 +1,26 @@
-.PHONY: all build test install uninstall purge run clean status logs verify-app
+.PHONY: all build test smoke-test preview-update-dialog install uninstall purge run clean status logs verify-app
 
 all: build
 
 test:
 	swift run -c debug MultipasteTests
+
+# End-to-end integration smoke test of the screenshot-to-clipboard
+# pipeline. Stand-alone Swift script that exercises the actual macOS
+# APIs (DispatchSourceFileSystemObject + NSPasteboard) against a
+# temp directory + a private pasteboard — so it doesn't touch the
+# user's real screenshot folder or system clipboard. Complements
+# the 199 unit tests in `make test` (those cover the pure logic;
+# this verifies the live integration on the machine).
+smoke-test:
+	@swift scripts/screenshot-smoke-test.swift
+
+# Visual preview of the "vX.Y.Z is available" update dialog —
+# uses the actual v2.0.2 CHANGELOG markdown that produced the bug
+# Rohin reported (raw `##`, `**`, ```` ` ````, `>` in plain text).
+# Click "Looks good" to confirm the fix works visually.
+preview-update-dialog:
+	@swift scripts/preview-update-dialog.swift
 
 build:
 	bash scripts/build.sh

@@ -12,6 +12,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         maxItems: prefs.maxHistory
     )
     private lazy var monitor = ClipboardMonitor(store: store, prefs: prefs)
+    private lazy var screenshotWatcher = ScreenshotWatcher(prefs: prefs)
     private let hotKeyManager = HotKeyManager()
     private lazy var snippetEngine = SnippetEngine(store: store)
     private lazy var picker = PickerWindow(
@@ -33,6 +34,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             // LaunchAgent is migrated away on startup (see
             // migrateLaunchAgentToLoginItem in AppDelegate).
             if enabled { LoginItem.enable() } else { LoginItem.disable() }
+        },
+        onAutoCopyScreenshotsChanged: { [weak self] _ in
+            // Bounce the watcher: the toggle's new value is already in
+            // prefs by the time this fires, and `reloadSettings()` will
+            // stop the source if the pref just went off, or start one
+            // if it just went on.
+            self?.screenshotWatcher.reloadSettings()
         }
     )
     private lazy var welcome = WelcomeWindow(prefs: prefs) { [weak self] in
@@ -63,6 +71,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = picker
 
         monitor.start()
+        // The screenshot watcher writes to NSPasteboard.general; the
+        // ClipboardMonitor (already started above) sees the changeCount
+        // bump on its next 300ms tick and inserts the image into history
+        // just like any other ⌘C. No special integration needed.
+        screenshotWatcher.start()
         hotKeyManager.register(prefs.hotkey) { [weak self] in
             self?.picker.show()
         }
@@ -273,6 +286,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_ notification: Notification) {
         monitor.stop()
+        screenshotWatcher.stop()
         hotKeyManager.unregister()
         snippetEngine.stop()
     }

@@ -51,6 +51,7 @@ public final class Preferences {
             Keys.hotkeyKeyCode:            Hotkey.default.keyCode,
             Keys.hotkeyModifiers:          Hotkey.default.modifiers.rawValue,
             Keys.augmentFileCopiesWithPath: true,
+            Keys.autoCopyScreenshots:      true,
         ])
     }
 
@@ -99,6 +100,18 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: Keys.pinnedItemsFirst) }
     }
 
+    /// When true, files saved by macOS's `screencapture` to the user's
+    /// configured screenshot location are auto-copied to the clipboard
+    /// the moment they appear on disk. Default ON: that's the whole
+    /// point of the feature — most users never remember to hold ⌃ to
+    /// get a screenshot on the clipboard, so they screenshot, then
+    /// drag the file to chat, instead of just ⌘V. With this on, every
+    /// screenshot is one ⌘V away.
+    public var autoCopyScreenshots: Bool {
+        get { defaults.bool(forKey: Keys.autoCopyScreenshots) }
+        set { defaults.set(newValue, forKey: Keys.autoCopyScreenshots) }
+    }
+
     public var hotkey: Hotkey {
         get {
             Hotkey(
@@ -121,5 +134,6 @@ public final class Preferences {
         static let hasCompletedFirstRun     = "hasCompletedFirstRun"
         static let augmentFileCopiesWithPath = "augmentFileCopiesWithPath"
         static let pinnedItemsFirst         = "pinnedItemsFirst"
+        static let autoCopyScreenshots      = "autoCopyScreenshots"
     }
 }

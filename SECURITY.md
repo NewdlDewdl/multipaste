@@ -9,7 +9,8 @@ reports seriously and want them to land somewhere I'll see them quickly.
 
 | Version  | Supported              |
 | -------- | ---------------------- |
-| `2.0.x`  | ✅ — current release    |
+| `2.1.x`  | ✅ — current release    |
+| `2.0.x`  | ⚠️ — best-effort       |
 | `1.9.x`  | ⚠️ — best-effort       |
 | `< 1.9`  | ❌ — please upgrade     |
 
