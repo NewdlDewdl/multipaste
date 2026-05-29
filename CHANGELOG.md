@@ -1,5 +1,74 @@
 # Changelog
 
+## 2.1.3 — 2026-05-28
+
+**Unpinning keeps the item where it is — it no longer teleports back to
+the far-away spot where it was first copied.**
+
+Since v2.1.1, pinned items always sit at the top of the picker. But
+*unpinning* an item dropped it straight back to its original
+chronological slot — and for an item you'd pinned precisely because it
+was old, that slot is near the bottom of the list. So you'd unpin
+something at the top and watch it vanish "super far away." Functionally
+fine; viscerally wrong.
+
+Now, unpinning leaves the item right where your eye already is: it
+becomes the most-recent **unpinned** item, so it lands at the top of the
+unpinned section — directly below any items that are still pinned,
+above everything else. Pinned-always-first still holds (an unpinned
+item can never sit above a pinned one), so "stays put" resolves to "top
+of the unpinned section." No teleport.
+
+The picker also keeps your selection **on that item** across the
+pin/unpin reorder, so you literally watch it stay in place instead of
+the highlight jumping to whatever else shuffled into that row.
+
+### How it works
+
+`HistoryStore.togglePin(id:)` now, on the **unpin** branch, lifts the
+item to the front of the recency store (`items[0]`). Because
+`sortedForDisplay()` renders `pinned (by recency) ++ unpinned (by
+recency)`, a most-recent unpinned item sorts to the top of the unpinned
+group. The pin branch is unchanged (it keeps its recency slot and gets
+hoisted into the pinned block). Storage stays chronological apart from
+this one deliberate move; eviction, persistence, and dedup are
+unaffected.
+
+`PickerWindow.reload()` gained a `pendingReselectID` that pin/unpin sets
+so the highlighted row follows the toggled item by identity rather than
+by stale row index.
+
+### What changed
+
+- **`Sources/MultipasteCore/HistoryStore.swift`** — `togglePin` moves
+  the item to `items[0]` when unpinning; documented the rationale.
+- **`Sources/Multipaste/PickerWindow.swift`** — `reload()` preserves the
+  selected item by id (via `pendingReselectID`); `togglePinSelection`
+  sets it and the unpin hint now reads "stays here, won't drop back
+  down."
+- **`Tests/MultipasteCoreTests/HistoryStoreTests.swift`** — rewrote the
+  old `unpinningRestoresChronologicalPosition` (which asserted the now-
+  unwanted teleport) into `unpinningKeepsItemAtTopOfUnpinned`, and added
+  4 guards: `unpinningDoesNotTeleportToOrigin` (the 5-item "super far
+  away" scenario), `unpinningLandsBelowRemainingPinned`,
+  `unpinMovesItemToFrontOfStorage`, `unpinDoesNotReorderOtherItems`.
+- **`Sources/MultipasteCore/Version.swift`** — 2.1.2 → 2.1.3.
+- **`Resources/Info.plist`** — `CFBundleShortVersionString` 2.1.2 →
+  2.1.3, `CFBundleVersion` 20 → 21.
+- **`README.md`** / **`SECURITY.md`** — test count 217 → 221; current
+  release noted as 2.1.3.
+
+### Test count
+
+217 → 221 (+5 new unpin tests, −1 rewritten teleport assertion). All
+pass in ~0.1s.
+
+### Compatibility
+
+Pure behavioral change to unpinning. No data, preference, or API
+changes; drop-in upgrade. Your existing pinned items and history are
+untouched.
+
 ## 2.1.2 — 2026-05-28
 
 **Hotfix: the single-instance guard no longer SIGTERMs innocent

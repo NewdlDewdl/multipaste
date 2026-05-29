@@ -28,7 +28,11 @@ enum HistoryStoreTests {
         TestRegistry.register("HistoryStore/sortedForDisplayAlwaysHoistsPinned", sortedForDisplayAlwaysHoistsPinned)
         TestRegistry.register("HistoryStore/sortedForDisplayPreservesRelativeOrderWithinGroups", sortedForDisplayPreservesRelativeOrderWithinGroups)
         TestRegistry.register("HistoryStore/pinningOldItemHoistsItToTop", pinningOldItemHoistsItToTop)
-        TestRegistry.register("HistoryStore/unpinningRestoresChronologicalPosition", unpinningRestoresChronologicalPosition)
+        TestRegistry.register("HistoryStore/unpinningKeepsItemAtTopOfUnpinned", unpinningKeepsItemAtTopOfUnpinned)
+        TestRegistry.register("HistoryStore/unpinningDoesNotTeleportToOrigin", unpinningDoesNotTeleportToOrigin)
+        TestRegistry.register("HistoryStore/unpinningLandsBelowRemainingPinned", unpinningLandsBelowRemainingPinned)
+        TestRegistry.register("HistoryStore/unpinMovesItemToFrontOfStorage", unpinMovesItemToFrontOfStorage)
+        TestRegistry.register("HistoryStore/unpinDoesNotReorderOtherItems", unpinDoesNotReorderOtherItems)
         TestRegistry.register("HistoryStore/searchResultsAreAlwaysPinnedFirst", searchResultsAreAlwaysPinnedFirst)
         TestRegistry.register("HistoryStore/itemsStaysChronologicalEvenWhenSortedHoists", itemsStaysChronologicalEvenWhenSortedHoists)
     }
@@ -266,25 +270,98 @@ enum HistoryStoreTests {
                         "pinning an old item must visibly hoist it to the top — that's the whole point of the pin button")
     }
 
-    static func unpinningRestoresChronologicalPosition() throws {
+    /// v2.1.3 feature: unpinning keeps the item where it visually sits
+    /// (top of the unpinned section) instead of sending it back to its
+    /// original chronological slot. Pin "first" (oldest) → it hoists to
+    /// the top; unpin → it STAYS at the top, because there are no other
+    /// pinned items above it.
+    static func unpinningKeepsItemAtTopOfUnpinned() throws {
         let (store, _) = makeStore()
         store.insert(.text("first"))
         store.insert(.text("second"))
         store.insert(.text("third"))
         // `items` storage order: [third, second, first] (most-recent-first).
-        // Find "first" by preview so we don't depend on items[i] indexing
-        // surviving sortedForDisplay rearrangements (which it does — the
-        // storage doesn't reorder — but find-by-preview is more honest).
         let firstId = store.items.first(where: { $0.preview == "first" })!.id
         store.togglePin(id: firstId)
         try expectEqual(store.sortedForDisplay().map(\.preview),
                         ["first", "third", "second"],
                         "pin hoists to top")
-        // Now unpin by the same id and verify chronological order resumes.
+        // Unpin: "first" must STAY at the top, not drop back to the bottom.
         store.togglePin(id: firstId)
         try expectEqual(store.sortedForDisplay().map(\.preview),
-                        ["third", "second", "first"],
-                        "unpin drops back into chronological slot")
+                        ["first", "third", "second"],
+                        "unpinning keeps the item at the top of the unpinned section, NOT back at its old chronological slot")
+    }
+
+    /// The exact "super far away" scenario Rohin reported, as a regression
+    /// guard. Five items; pin the oldest (which hoists it to the top);
+    /// unpin it; it must NOT teleport to the bottom of the list.
+    static func unpinningDoesNotTeleportToOrigin() throws {
+        let (store, _) = makeStore()
+        // Insert so items = [A, B, C, D, E] with A newest, E oldest.
+        for s in ["E", "D", "C", "B", "A"] { store.insert(.text(s)) }
+        try expectEqual(store.items.map(\.preview), ["A", "B", "C", "D", "E"])
+
+        let eId = store.items.first(where: { $0.preview == "E" })!.id
+        store.togglePin(id: eId)
+        try expectEqual(store.sortedForDisplay().map(\.preview).first, "E",
+                        "pinning the oldest item hoists it to the top")
+
+        store.togglePin(id: eId)   // unpin
+        try expectEqual(store.sortedForDisplay().map(\.preview).first, "E",
+                        "unpinning must leave E at the top — NOT teleport it to the bottom 'super far away' slot")
+        // Full order after unpin: E became most-recent → [E, A, B, C, D].
+        try expectEqual(store.sortedForDisplay().map(\.preview),
+                        ["E", "A", "B", "C", "D"])
+    }
+
+    /// When OTHER items remain pinned, the just-unpinned item lands at the
+    /// top of the UNPINNED section — i.e. directly below the still-pinned
+    /// items, never above them (pinned-always-first is preserved).
+    static func unpinningLandsBelowRemainingPinned() throws {
+        let (store, _) = makeStore()
+        // items = [new, mid, old] (new newest).
+        for s in ["old", "mid", "new"] { store.insert(.text(s)) }
+        let oldId = store.items.first(where: { $0.preview == "old" })!.id
+        let newId = store.items.first(where: { $0.preview == "new" })!.id
+        store.togglePin(id: oldId)   // pin old
+        store.togglePin(id: newId)   // pin new
+        // Pinned by recency: [new, old]; unpinned: [mid]. Display: [new, old, mid].
+        try expectEqual(store.sortedForDisplay().map(\.preview), ["new", "old", "mid"])
+
+        // Unpin "old": it must sit just below the still-pinned "new",
+        // above "mid" — i.e. top of the unpinned section.
+        store.togglePin(id: oldId)
+        try expectEqual(store.sortedForDisplay().map(\.preview), ["new", "old", "mid"],
+                        "unpinned 'old' stays directly below the still-pinned 'new', at the top of the unpinned section")
+    }
+
+    /// The storage-level mechanism: unpinning moves the item to the front
+    /// of `items` (most-recent), which is what places it at the top of the
+    /// unpinned section in sortedForDisplay().
+    static func unpinMovesItemToFrontOfStorage() throws {
+        let (store, _) = makeStore()
+        for s in ["c", "b", "a"] { store.insert(.text(s)) }   // items = [a, b, c]
+        let cId = store.items.first(where: { $0.preview == "c" })!.id
+        store.togglePin(id: cId)     // pin c (oldest) — storage unchanged by pin
+        try expectEqual(store.items.map(\.preview), ["a", "b", "c"],
+                        "pinning does not reorder storage")
+        store.togglePin(id: cId)     // unpin c → moves to front of storage
+        try expectEqual(store.items.map(\.preview), ["c", "a", "b"],
+                        "unpinning lifts the item to the front of the recency store")
+    }
+
+    /// Unpinning one item must not disturb the relative order of the
+    /// others in storage.
+    static func unpinDoesNotReorderOtherItems() throws {
+        let (store, _) = makeStore()
+        for s in ["e", "d", "c", "b", "a"] { store.insert(.text(s)) }  // items=[a,b,c,d,e]
+        let dId = store.items.first(where: { $0.preview == "d" })!.id
+        store.togglePin(id: dId)
+        store.togglePin(id: dId)   // pin then unpin d → d to front
+        // Others keep their relative order: a,b,c,e (d removed from slot 3, prepended).
+        try expectEqual(store.items.map(\.preview), ["d", "a", "b", "c", "e"],
+                        "only the unpinned item moves; the rest keep relative order")
     }
 
     /// Search results must also be pinned-first. Before v2.1.1 the

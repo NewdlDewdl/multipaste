@@ -87,9 +87,36 @@ public final class HistoryStore {
         return pinned + rest
     }
 
+    /// Pin or unpin the item with `id`.
+    ///
+    /// **Unpin keeps the item where it visually sits.** When you unpin,
+    /// the item is moved to the front of the recency store so it becomes
+    /// the most-recent *unpinned* item — which means `sortedForDisplay()`
+    /// places it at the top of the unpinned section, immediately below
+    /// any still-pinned items. It does NOT fall back to its original
+    /// (possibly very old) chronological slot.
+    ///
+    /// Why: while an item is pinned it lives at the top of the picker.
+    /// Before this change, unpinning an old item sent it back to where it
+    /// was first copied — often the very bottom of the list, "super far
+    /// away" — so unpin felt like the item vanished. Now unpinning leaves
+    /// it right where your eye already is. Pinned-always-first still holds
+    /// (an unpinned item can never sit above a pinned one), so "stays put"
+    /// resolves to "top of the unpinned section."
+    ///
+    /// Pinning is unchanged: the item keeps its recency slot and
+    /// `sortedForDisplay()` hoists it into the pinned block.
     public func togglePin(id: UUID) {
         guard let idx = items.firstIndex(where: { $0.id == id }) else { return }
+        let wasPinned = items[idx].pinned
         items[idx].pinned.toggle()
+        if wasPinned {
+            // Unpinning: lift the item to the front of the recency store so
+            // it stays at the top of the unpinned section instead of
+            // teleporting back to its origin.
+            let item = items.remove(at: idx)
+            items.insert(item, at: 0)
+        }
         save()
         notify()
     }

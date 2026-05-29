@@ -194,11 +194,29 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         panel.setFrameOrigin(NSPoint(x: x, y: y))
     }
 
+    /// When set, the next `reload()` re-selects the row for this item id
+    /// (and scrolls it into view) instead of keeping the stale row index.
+    /// Set by pin/unpin so the highlight follows the item as it moves —
+    /// you visibly watch it stay near the top on unpin rather than the
+    /// selection jumping to whatever else landed at that row.
+    private var pendingReselectID: UUID?
+
     private func reload() {
+        // Capture the item under the current selection so we can keep the
+        // highlight on it across the reload, unless a pin/unpin explicitly
+        // asked us to follow a specific item.
+        let preserveID = pendingReselectID
+            ?? ((tableView.selectedRow >= 0 && tableView.selectedRow < filtered.count)
+                ? filtered[tableView.selectedRow].id : nil)
+        pendingReselectID = nil
+
         filtered = store.search(query)
         tableView.reloadData()
-        if filtered.isEmpty {
-            // nothing to select
+
+        guard !filtered.isEmpty else { return }
+        if let id = preserveID, let row = filtered.firstIndex(where: { $0.id == id }) {
+            tableView.selectRowIndexes([row], byExtendingSelection: false)
+            tableView.scrollRowToVisible(row)
         } else if tableView.selectedRow < 0 || tableView.selectedRow >= filtered.count {
             tableView.selectRowIndexes([0], byExtendingSelection: false)
         }
@@ -358,12 +376,16 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         guard row >= 0 && row < filtered.count else { return }
         let item = filtered[row]
         let willBePinned = !item.pinned
+        // Keep the highlight on this exact item after the list reorders,
+        // so the user watches it stay near the top on unpin (rather than
+        // the selection jumping to whatever else lands at this row).
+        pendingReselectID = item.id
         store.togglePin(id: item.id)
         let preview = item.preview.replacingOccurrences(of: "\n", with: " ")
             .prefix(48)
         flashHint(willBePinned
             ? "📌 Pinned — survives history eviction and snippet expansion"
-            : "Unpinned “\(preview)”")
+            : "Unpinned “\(preview)” — stays here, won’t drop back down")
     }
 
     private func editTriggerOnSelection() {
