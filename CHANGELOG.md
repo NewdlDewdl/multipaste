@@ -1,5 +1,71 @@
 # Changelog
 
+## 2.1.2 — 2026-05-28
+
+**Hotfix: the single-instance guard no longer SIGTERMs innocent
+bystander processes.** `SingleInstance.enforce()` runs at every launch
+to kill rival Multipaste instances (so the old LaunchAgent and the
+SMAppService Login Item can't both spawn a clipboard daemon). It
+decided what counted as a "rival" with:
+
+```swift
+guard line.contains("Multipaste.app/Contents/MacOS/Multipaste") else { continue }
+```
+
+That matches the binary path **anywhere on a `ps` line — including the
+arguments of unrelated processes.** Any shell one-liner, `grep`,
+`tail -f`, or editor that referenced the binary path got SIGTERM'd the
+instant Multipaste launched. (Found the hard way: it repeatedly killed
+the diagnostic shell used while updating a local install across several
+versions — every relaunch nuked the very terminal watching it.)
+
+### The fix
+
+Matching now keys on `argv0` — the process's actual **executable**, the
+first whitespace-delimited token of the `ps` command column — not on a
+substring of the whole command line. A genuine Multipaste process has
+`argv0 == …/Multipaste.app/Contents/MacOS/Multipaste`; a bystander
+shell has `argv0 == /bin/zsh` and merely mentions the path in later
+tokens, so it is correctly left alone.
+
+The parsing moved into a pure, unit-tested helper:
+`MultipasteCore/ProcessTable.multipasteSiblingPIDs(psOutput:ownPID:)`.
+`SingleInstance.enforce()` keeps its asynchronous pipe-drain (the
+v1.6.1 deadlock fix) and now calls the helper instead of an inline
+`line.contains` loop.
+
+### What changed
+
+- **`Sources/MultipasteCore/ProcessTable.swift`** (new) — pure
+  `ps -Ao pid,command` parser that returns real Multipaste sibling PIDs
+  by `argv0`, excluding our own PID, the header row, blank/malformed
+  lines, and bystanders that only reference the path in arguments.
+- **`Sources/Multipaste/SingleInstance.swift`** — `enforce()` now uses
+  `ProcessTable.multipasteSiblingPIDs`; deleted the over-broad
+  `line.contains` matching. Added `import MultipasteCore`.
+- **`Tests/MultipasteCoreTests/ProcessTableTests.swift`** (new) — 14
+  tests: real app matched, `~/Applications` variant matched, shell /
+  grep / tail with the path in args all excluded, own-PID excluded,
+  multiple real siblings, argv0-with-trailing-args matched, `ps` header
+  row skipped, leading-whitespace PID parsed, blank/malformed skipped,
+  empty input, unrelated app ignored, and an explicit
+  real-world-bug-scenario regression guard.
+- **`Tests/MultipasteCoreTests/main.swift`** — registers the new suite.
+- **`Sources/MultipasteCore/Version.swift`** — 2.1.1 → 2.1.2.
+- **`Resources/Info.plist`** — `CFBundleShortVersionString` 2.1.1 →
+  2.1.2, `CFBundleVersion` 19 → 20.
+- **`README.md`** / **`SECURITY.md`** — test count 203 → 217; current
+  release noted as 2.1.2.
+
+### Test count
+
+203 → 217 (+14 ProcessTable). All pass in ~0.1s.
+
+### Compatibility
+
+Pure behavioral fix to startup process-matching. No data, preference,
+or API changes. Upgrading is a drop-in replacement.
+
 ## 2.1.1 — 2026-05-28
 
 **Hotfix: the pin button now actually does something.** Rohin reported

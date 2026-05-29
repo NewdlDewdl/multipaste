@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.1.1 (universal — Intel + Apple Silicon)</strong></a><br>
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.1.2 (universal — Intel + Apple Silicon)</strong></a><br>
   <a href="#install">Install</a> ·
   <a href="#keys">Keys</a> ·
   <a href="#snippet-expansion">Snippets</a> ·
@@ -31,9 +31,9 @@ No subscriptions, no Electron, no telemetry, no account. ~1.5 MB
 universal Swift binary in a 712 KB DMG (one binary for Intel + Apple
 Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
-**Latest release:** [v2.1.1](https://github.com/NewdlDewdl/multipaste/releases/latest)
+**Latest release:** [v2.1.2](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 203 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
+&nbsp;·&nbsp; **Tests:** 217 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
 
 ---
 
@@ -41,7 +41,7 @@ Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-2.1.1.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-2.1.2.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (712 KB universal DMG — runs on both Intel and Apple Silicon).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
@@ -143,7 +143,7 @@ picks up the new location. (We don't auto-detect `defaults write`
 because there's no notification path for it; the cost of a relaunch
 is one menu click and it converges immediately.)
 
-**Privacy + permissions**: on first launch after 2.1.1, macOS prompts
+**Privacy + permissions**: on first launch after 2.1.2, macOS prompts
 "Multipaste would like to access files in your Desktop folder" (or
 wherever your screenshot location is). This is a one-time TCC prompt
 — Allow once and the watcher works forever. If you Deny, the watcher
@@ -178,7 +178,7 @@ tail -F ~/Library/Logs/Multipaste/multipaste.log
 #    ⌘⇧3 (full screen) — or ⌘⇧4 + region — or ⌘⇧5 + UI.
 
 # 3. The log should print, within ~50 ms:
-#    [multipaste 2.1.1 pid=N] ScreenshotWatcher: copied Screenshot 2026-...png (123456 bytes, 2 representations) to pasteboard
+#    [multipaste 2.1.2 pid=N] ScreenshotWatcher: copied Screenshot 2026-...png (123456 bytes, 2 representations) to pasteboard
 
 # 4. Open the picker (⌘⇧V). The screenshot should be the topmost item.
 
@@ -476,7 +476,7 @@ does not make network calls outside the once-a-day update check
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
   `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 203 unit tests live here (incl. ScreenshotDetector for the screenshots-to-clipboard feature; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
+  All testable. 217 unit tests live here (incl. ScreenshotDetector for the screenshots-to-clipboard feature; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -510,7 +510,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test                    # runs all 203 unit tests in ~330 ms
+make test                    # runs all 217 unit tests in ~330 ms
 make smoke-test              # end-to-end integration test of the screenshot pipeline
 make preview-update-dialog   # visually preview the "vX.Y.Z is available" dialog
 make verify-app              # verifies the built .app: universal binary + codesign + plist
@@ -561,6 +561,7 @@ Coverage:
 | `HistoryStore` (pinned-first) | 7 | (v2.1.1) unconditional hoist — chronological-when-nothing-pinned, hoist-when-pinned, within-group order preserved, **`pinningOldItemHoistsItToTop` regression guard** for the v2.1.0 "pin button is a no-op" bug, unpin restores chronological slot, search results are pinned-first, storage `items` stays chronological even when `sortedForDisplay()` hoists |
 | `Preferences` (pinned-first deprecation)  | 2 | (v2.1.1) deprecated getter hard-wired to true, writes are no-ops (old plists silently do the right thing) |
 | `Preferences` (auto-copy screenshots) | 3 | default ON (the feature ships on), persistence, off↔on round trip |
+| `ProcessTable`         | 14    | (v2.1.2) single-instance `ps` matching keys on `argv0` not a line substring — real app matched, `~/Applications` variant matched, shell/grep/tail with the path in **arguments** all excluded, own-PID excluded, multiple siblings, argv0-with-trailing-args matched, `ps` header skipped, leading-whitespace PID, blank/malformed skipped, empty input, unrelated app ignored, **real-world-bug regression guard** (the over-broad match that SIGTERM'd bystander shells) |
 | `License`              | 13    | LICENSE.md path + `.md` extension regression-guard, PolyForm Strict 1.0.0 title + URL, project copyright header + commercial-license email, the Strict-defining no-distribution/no-derivatives clause, NC / Personal / NC-Org sections, Patent Defense, 32-day cure, warranty disclaimer, absence of MIT/AGPL/GPL/Affero, absence of PolyForm Noncommercial (wrong variant), absence of stray bare-LICENSE, line-count range, contribution pointer |
 | `Contribution`         | 5     | CONTRIBUTING.md exists, CLA contains perpetual/worldwide/royalty-free/irrevocable grant, relicensing-right clause explicitly mentions proprietary closed-source, PolyForm Strict context explained, PR template links to CLA + has confirmation checkboxes + calls out relicensing |
 | `LicensingMetadata`    | 12    | REUSE.toml exists + declares `LicenseRef-PolyForm-Strict-1.0.0` for Sources & Tests, `.licensee.json` exists + valid JSON + declares the SPDX ID, `LICENSES/LicenseRef-PolyForm-Strict-1.0.0.md` exists + content matches LICENSE.md (symlink intact), every `.swift` file under Sources & Tests has SPDX-License-Identifier + SPDX-FileCopyrightText in top 5 lines, Package.swift has SPDX header after `swift-tools-version`, README contains PolyForm badge URL (`polyformproject.org/strict.png`) + canonical license URL + **badge is NOT in the first 30 lines** (regression guard: stops the intimidating "STRICT" logo from migrating back into the intro header above the install instructions) |
@@ -569,7 +570,7 @@ Coverage:
 | `VersionConsistency`   | 6     | Version.swift's `MultipasteVersion.value` parses cleanly; Info.plist `CFBundleShortVersionString` agrees with Version.swift; README hero `Download vX.Y.Z` CTA matches; README install section references `Multipaste-X.Y.Z.dmg` matching the canonical version; **no stale `Multipaste-A.B.C.dmg` patterns anywhere in README** (the regression-guard that catches the bug class where Version.swift bumps but the README install link still points at the old DMG); CHANGELOG's latest `## X.Y.Z` entry matches; SECURITY.md supported-versions table mentions the current major series (e.g. `2.0.x`) |
 | `BuildScript`          | 4     | `scripts/build.sh` defaults to `ARCHS="${MULTIPASTE_BUILD_ARCHS:-arm64 x86_64}"` (so a fresh build is universal — **fixes the v2.0.0 Intel-can't-open bug**); script contains `lipo -create` step AND a `lipo -archs` post-build verification that fails the build if any requested arch is missing; the in-DMG `READ ME FIRST.txt` heredoc in `scripts/dmg.sh` uses **control-click / right-click → Open**, NOT just "double-click Multipaste" (fixes the v2.0.1 in-DMG-readme bug where users hit a Gatekeeper dialog with no Open button); the heredoc mentions System Settings → Privacy & Security as the macOS 15 Sequoia fallback |
 | `InfoPlist`            | 7     | CFBundleIdentifier in Info.plist matches Swift's `MultipasteVersion.bundleIdentifier` (drift breaks every TCC grant + Login Item + preference + launch agent — anything keyed by bundle ID); CFBundlePackageType is `APPL`; NSPrincipalClass is `NSApplication`; LSUIElement is true (menubar-only, no Dock icon); LSMinimumSystemVersion is `13.0`; NSAppleEventsUsageDescription present + non-empty + mentions Multipaste/paste; NSHumanReadableCopyright references PolyForm Strict + commercial-license email (Finder Get Info shows the right contact) |
-| **Total**              | **203**| Pure logic; UI is integration-tested manually          |
+| **Total**              | **217**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -583,10 +584,10 @@ README.md  LICENSE.md  CHANGELOG.md
 Sources/
   MultipasteCore/      ← testable, pure Swift:
                           ClipboardItem  HistoryStore  Preferences
-                          PasteboardAugmenter  ReleaseNotesFormatter
-                          ScreenshotDetector  SemanticVersion
-                          SnippetMatcher  TabNavigation
-                          UpdateChecker  Version
+                          PasteboardAugmenter  ProcessTable
+                          ReleaseNotesFormatter  ScreenshotDetector
+                          SemanticVersion  SnippetMatcher
+                          TabNavigation  UpdateChecker  Version
   Multipaste/          ← AppKit / system:
                           AppDelegate  AppPaths  ClipboardMonitor
                           Diagnostics  HotKeyManager  HotkeyRecorderField
@@ -623,7 +624,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 203 unit tests (~330 ms)
+make test          # run all 217 unit tests (~330 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -859,5 +860,9 @@ a scrollable accessory view, so users see bold + monospaced code +
 links the way the changelog meant them. v2.1.1 fixed the pin button
 being a visible no-op — pinned items now ALWAYS rise to the top of
 the picker, search results, and the menu-bar Recent dropdown, not
-just survive eviction past the history cap. 203 tests now. Search
-before building. Test before shipping. Boil the ocean.
+just survive eviction past the history cap. v2.1.2 fixed the
+single-instance guard SIGTERM-ing innocent bystander processes — it
+matched the binary path anywhere on a `ps` line (killing any shell,
+grep, or editor that merely referenced the path) instead of keying on
+the process's actual executable. 217 tests now. Search before
+building. Test before shipping. Boil the ocean.

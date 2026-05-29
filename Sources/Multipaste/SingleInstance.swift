@@ -2,16 +2,22 @@
 // SPDX-License-Identifier: LicenseRef-PolyForm-Strict-1.0.0
 
 import AppKit
+import MultipasteCore
 
 /// Ensures only one Multipaste instance is alive at a time. Without this,
 /// the LaunchAgent and the SMAppService Login Item can both spawn a
 /// daemon — two processes polling the same clipboard, fighting over the
 /// same history JSON.
 ///
-/// Strategy: at launch, find any other process whose path matches our
-/// installed-bundle binary. Send the older one SIGTERM. If we're the
-/// older one ourselves, exit immediately and let the newer instance
-/// take over.
+/// Strategy: at launch, find any other process whose **executable** is
+/// our installed-bundle binary and SIGTERM it, then stay alive.
+///
+/// Matching is delegated to `ProcessTable.multipasteSiblingPIDs`, which
+/// keys on `argv0` (the executable), NOT on whether the whole command
+/// line contains the binary path. The earlier `line.contains(...)`
+/// approach matched any bystander process that merely *mentioned* the
+/// path in its arguments (a `grep`, a `tail -f`, an editor, a shell
+/// one-liner) and SIGTERM'd it on every launch. Fixed in v2.1.2.
 enum SingleInstance {
 
     /// Returns true if we should keep running, false if we should exit
@@ -54,15 +60,9 @@ enum SingleInstance {
         _ = group.wait(timeout: .now() + .seconds(3))
 
         let text = String(data: collected, encoding: .utf8) ?? ""
-        var siblings: [Int32] = []
-        for line in text.split(separator: "\n") {
-            guard line.contains("Multipaste.app/Contents/MacOS/Multipaste") else { continue }
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            let firstSpace = trimmed.firstIndex(of: " ") ?? trimmed.endIndex
-            if let pid = Int32(trimmed[..<firstSpace]), pid != me {
-                siblings.append(pid)
-            }
-        }
+        // Match on argv0 (the executable), not a substring of the whole
+        // command line — see ProcessTable for the bug this prevents.
+        let siblings = ProcessTable.multipasteSiblingPIDs(psOutput: text, ownPID: me)
         if siblings.isEmpty { return true }
 
         // Two processes — we're the newer one. Kill the older sibling(s)
