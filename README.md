@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.1.3 (universal — Intel + Apple Silicon)</strong></a><br>
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.2.0 (universal, Intel + Apple Silicon)</strong></a><br>
   <a href="#install">Install</a> ·
   <a href="#keys">Keys</a> ·
   <a href="#snippet-expansion">Snippets</a> ·
@@ -31,9 +31,9 @@ No subscriptions, no Electron, no telemetry, no account. ~1.5 MB
 universal Swift binary in a 712 KB DMG (one binary for Intel + Apple
 Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
-**Latest release:** [v2.1.3](https://github.com/NewdlDewdl/multipaste/releases/latest)
+**Latest release:** [v2.2.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 221 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
+&nbsp;·&nbsp; **Tests:** 232 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
 
 ---
 
@@ -41,7 +41,7 @@ Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-2.1.3.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-2.2.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (712 KB universal DMG — runs on both Intel and Apple Silicon).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
@@ -476,7 +476,7 @@ does not make network calls outside the once-a-day update check
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
   `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 221 unit tests live here (incl. ScreenshotDetector for the screenshots-to-clipboard feature; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
+  All testable. 232 unit tests live here (incl. ScreenshotDetector for the screenshots-to-clipboard feature; PasteSynthesis + PasteRouting which lock the ⌘V device-bit and paste-path routing behind the v2.2.0 paste fix; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -510,7 +510,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test                    # runs all 221 unit tests in ~330 ms
+make test                    # runs all 232 unit tests in ~330 ms
 make smoke-test              # end-to-end integration test of the screenshot pipeline
 make preview-update-dialog   # visually preview the "vX.Y.Z is available" dialog
 make verify-app              # verifies the built .app: universal binary + codesign + plist
@@ -570,7 +570,9 @@ Coverage:
 | `VersionConsistency`   | 6     | Version.swift's `MultipasteVersion.value` parses cleanly; Info.plist `CFBundleShortVersionString` agrees with Version.swift; README hero `Download vX.Y.Z` CTA matches; README install section references `Multipaste-X.Y.Z.dmg` matching the canonical version; **no stale `Multipaste-A.B.C.dmg` patterns anywhere in README** (the regression-guard that catches the bug class where Version.swift bumps but the README install link still points at the old DMG); CHANGELOG's latest `## X.Y.Z` entry matches; SECURITY.md supported-versions table mentions the current major series (e.g. `2.0.x`) |
 | `BuildScript`          | 4     | `scripts/build.sh` defaults to `ARCHS="${MULTIPASTE_BUILD_ARCHS:-arm64 x86_64}"` (so a fresh build is universal — **fixes the v2.0.0 Intel-can't-open bug**); script contains `lipo -create` step AND a `lipo -archs` post-build verification that fails the build if any requested arch is missing; the in-DMG `READ ME FIRST.txt` heredoc in `scripts/dmg.sh` uses **control-click / right-click → Open**, NOT just "double-click Multipaste" (fixes the v2.0.1 in-DMG-readme bug where users hit a Gatekeeper dialog with no Open button); the heredoc mentions System Settings → Privacy & Security as the macOS 15 Sequoia fallback |
 | `InfoPlist`            | 7     | CFBundleIdentifier in Info.plist matches Swift's `MultipasteVersion.bundleIdentifier` (drift breaks every TCC grant + Login Item + preference + launch agent — anything keyed by bundle ID); CFBundlePackageType is `APPL`; NSPrincipalClass is `NSApplication`; LSUIElement is true (menubar-only, no Dock icon); LSMinimumSystemVersion is `13.0`; NSAppleEventsUsageDescription present + non-empty + mentions Multipaste/paste; NSHumanReadableCopyright references PolyForm Strict + commercial-license email (Finder Get Info shows the right contact) |
-| **Total**              | **221**| Pure logic; UI is integration-tested manually          |
+| `PasteSynthesis`       | 7     | ⌘V flag composition: the left-Command device bit (`NX_DEVICELCMDKEYMASK`, `0x8`) is OR'd into `commandVFlags` so Chromium/Electron honor the synthesized Command (Flycut #18); exact `0x10_0008` value; **regression guard that the flags never silently revert to bare `maskCommand`** (the v2.1.x paste-into-Electron bug) |
+| `PasteRouting`         | 4     | paste-path decision: previous app still frontmost is `.immediate`, focus on Multipaste with a captured target is `.restoreFocus`, frontmost with no target is `.clipboardOnly` |
+| **Total**              | **232**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -624,7 +626,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 221 unit tests (~330 ms)
+make test          # run all 232 unit tests (~330 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -866,5 +868,10 @@ matched the binary path anywhere on a `ps` line (killing any shell,
 grep, or editor that merely referenced the path) instead of keying on
 the process's actual executable. v2.1.3 made unpinning keep the item
 where it is — top of the unpinned section — instead of teleporting it
-back to the far-away slot where it was first copied. 221 tests now.
+back to the far-away slot where it was first copied. v2.2.0 fixed the
+picker's "press Return and nothing pastes until you reopen it a few times"
+race: the picker is now a non-activating panel that never steals focus from
+the app you're pasting into, and the synthesized ⌘V carries the
+device-dependent Command bit Chromium and Electron apps require. 232 tests
+now.
 Search before building. Test before shipping. Boil the ocean.

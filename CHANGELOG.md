@@ -1,5 +1,88 @@
 # Changelog
 
+## 2.2.0 (2026-06-07)
+
+**Press ⌘⇧V, pick an item, hit Return, and it pastes the first time. The
+picker no longer "opens but won't paste until you reopen it two or three
+times."**
+
+The clipboard picker used to activate Multipaste so its search field could
+take keystrokes, then, on pick, re-activate whatever app you came from and
+synthesize ⌘V into it. On macOS 14+ (Sonoma) and later, app activation became
+*cooperative*: `activate()` is only a request, and handing focus back to
+another app no longer completes synchronously. So the synthesized ⌘V frequently
+fired a beat before the target app had actually regained input focus, and the
+paste vanished. The picker *looked* like it did nothing; you reopened it and
+retried until the timing happened to line up. Chromium/Electron targets (Claude
+desktop, Codex, Slack, VS Code) made it worse for a second, independent reason
+(below).
+
+### Two root causes, two fixes
+
+**1. The focus race, fixed by never stealing focus.** The picker is now a true
+*non-activating* panel. It already used `.nonactivatingPanel` (which is
+*allowed* to take keyboard focus without activating its app) but then defeated
+that by calling `NSApp.activate(ignoringOtherApps:)` on show. Removing that one
+call, plus declaring `canBecomeKey` on an `NSPanel` subclass so the search field
+still accepts typing, means the app you were in **stays frontmost the whole time
+the picker is open**. On pick there's nothing to re-activate, so there's no
+activation round-trip to lose a race against. (This is exactly how Maccy's
+`FloatingPanel` works.) Dismiss-on-click-away, previously a side effect of the
+app deactivating, is now handled explicitly via `windowDidResignKey`.
+
+**2. Chromium/Electron dropped the Command modifier, fixed with the device
+bit.** The synthesized ⌘V set only the generic Command mask (`NX_COMMANDMASK`).
+Chromium-based apps inspect the *device-dependent* left/right Command bit and
+ignore a Command that lacks it, so the keystroke degraded to a bare "v" or was
+dropped. The synthesized event now also carries `NX_DEVICELCMDKEYMASK` (the
+long-standing Flycut #18 / Maccy fix), posts to the session tap instead of the
+HID tap, and suppresses live keyboard input during the post so a still-held
+hotkey modifier can't contaminate it. Snippet expansion shares the same
+hardened keystroke, so it benefits too.
+
+### How it works
+
+`PickerWindow` presents via `orderFrontRegardless()` + `makeKey()` (never
+`NSApp.activate`); `PickerPanel` overrides `canBecomeKey`. `AppDelegate`'s
+`pickAndPaste` routes through the pure `PasteRouting` policy: the common case is
+`.immediate` (previous app still frontmost → settle one beat, then paste), with
+a `.restoreFocus` fallback that uses cooperative `yieldActivation(to:)` for the
+rare case focus did land on Multipaste, and `.clipboardOnly` when there's no
+safe target. `Paster.simulateCommandV()` stamps `PasteSynthesis.commandVFlags`
+(`maskCommand | NX_DEVICELCMDKEYMASK`). The ⌘V flag composition and the routing
+decision are pure, AppKit-free, and unit-tested.
+
+### What changed
+
+- **`Sources/Multipaste/PickerWindow.swift`**: new `PickerPanel: NSPanel`
+  (`canBecomeKey == true`); `show()` drops `NSApp.activate(ignoringOtherApps:)`
+  and uses `orderFrontRegardless()` + `makeKey()`; `hidesOnDeactivate = false`
+  plus `windowDidResignKey` dismissal; logs the panel-key / frontmost state on
+  show.
+- **`Sources/Multipaste/AppDelegate.swift`**: `pickAndPaste` rewritten around
+  `PasteRouting`; the `.restoreFocus` fallback uses `NSApp.yieldActivation(to:)`
+  plus `activate(from:options:)` on macOS 14+; a short settle after the focus
+  condition is met; `waitForFocus` tightened to a non-optional target.
+- **`Sources/Multipaste/Paster.swift`**: `simulateCommandV()` hardened with the
+  left-Command device bit, `.cgSessionEventTap`, local-input suppression, and a
+  `synthMarker` tag; now owns the shared `synthMarker`.
+- **`Sources/Multipaste/SnippetEngine.swift`**: reuses
+  `Paster.simulateCommandV()` (drops its duplicate sender); marker sourced from
+  `Paster`.
+- **`Sources/MultipasteCore/PasteSynthesis.swift`** (new): pure ⌘V flag /
+  keycode policy carrying the device-bit rationale.
+- **`Sources/MultipasteCore/PasteRouting.swift`** (new): pure paste-path
+  decision (`.immediate` / `.restoreFocus` / `.clipboardOnly`).
+- **`Tests/MultipasteCoreTests/PasteSynthesisTests.swift`** (new, 7 tests):
+  lock the device bit into the flags so it can never silently regress.
+- **`Tests/MultipasteCoreTests/PasteRoutingTests.swift`** (new, 4 tests): the
+  routing truth table.
+- **`Sources/MultipasteCore/Version.swift`**: 2.1.3 to 2.2.0.
+- **`Resources/Info.plist`**: `CFBundleShortVersionString` 2.1.3 to 2.2.0,
+  `CFBundleVersion` 21 to 22.
+- **`README.md`** / **`SECURITY.md`**: test count 221 to 232; current release
+  noted as 2.2.0.
+
 ## 2.1.3 — 2026-05-28
 
 **Unpinning keeps the item where it is — it no longer teleports back to

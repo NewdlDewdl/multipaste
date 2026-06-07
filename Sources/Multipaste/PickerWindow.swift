@@ -48,7 +48,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         self.onEditTrigger = onEditTrigger
 
         let rect = NSRect(x: 0, y: 0, width: 540, height: 380)
-        panel = NSPanel(
+        panel = PickerPanel(
             contentRect: rect,
             styleMask: [.titled, .closable, .fullSizeContentView, .nonactivatingPanel, .resizable, .hudWindow],
             backing: .buffered,
@@ -58,7 +58,12 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         panel.titlebarAppearsTransparent = true
         panel.titleVisibility = .hidden
         panel.level = .floating
-        panel.hidesOnDeactivate = true
+        // We no longer activate Multipaste when showing the picker, so the
+        // app never "deactivates" in the sense `hidesOnDeactivate` keys off
+        // (it was never active). Dismissal on click-away is handled by
+        // `windowDidResignKey` instead. Leaving this true would do nothing
+        // useful and could hide the panel at surprising moments.
+        panel.hidesOnDeactivate = false
         panel.isMovableByWindowBackground = true
         panel.isReleasedWhenClosed = false
         panel.standardWindowButton(.closeButton)?.isHidden = true
@@ -168,17 +173,55 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         searchField.stringValue = ""
         reload()
         positionOnActiveScreen()
-        panel.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        // Present as a NON-ACTIVATING key panel: order it above everything
+        // and take keyboard focus WITHOUT activating Multipaste. Because we
+        // never become the active app, `previouslyActiveApp` stays the
+        // frontmost application the entire time the picker is open — so on
+        // pick we synthesize ⌘V straight into it, with no app-activation
+        // round-trip to race against.
+        //
+        // This is the fix for the v2.1.x "press Enter, nothing pastes,
+        // reopen and retry" bug: the old code called
+        // `NSApp.activate(ignoringOtherApps:)` here, which forced focus away
+        // from the target and required re-activating it on paste — a hand-off
+        // that, on macOS 14+ cooperative activation, completed *after* ⌘V was
+        // already posted often enough to drop the paste intermittently.
+        // (Matches Maccy's FloatingPanel: orderFrontRegardless + makeKey,
+        // never NSApp.activate.)
+        panel.orderFrontRegardless()
+        panel.makeKey()
         panel.makeFirstResponder(searchField)
         if !filtered.isEmpty {
             tableView.selectRowIndexes([0], byExtendingSelection: false)
             tableView.scrollRowToVisible(0)
         }
+        Diagnostics.log(
+            "picker.show: panelKey=\(panel.isKeyWindow) " +
+            "front=\(NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "?") " +
+            "prevApp=\(previouslyActiveApp?.bundleIdentifier ?? "nil")"
+        )
     }
 
     func hide() {
         panel.orderOut(nil)
+    }
+
+    // MARK: - NSWindowDelegate
+
+    /// Dismiss the picker when it loses key focus — i.e. the user clicked
+    /// into another app or window. This replaces the old
+    /// `hidesOnDeactivate` dismissal, which depended on Multipaste being
+    /// the active app; now that the picker is a non-activating panel,
+    /// Multipaste never activates, so we key off the panel resigning key
+    /// instead.
+    ///
+    /// The `isVisible` guard makes this a no-op for the resignKey that
+    /// `hide()`'s own `orderOut` triggers (by then the panel is already
+    /// ordered out), so committing a pick doesn't double-hide.
+    func windowDidResignKey(_ notification: Notification) {
+        guard panel.isVisible else { return }
+        Diagnostics.log("picker.resignKey → hide")
+        hide()
     }
 
     // MARK: - Layout
@@ -531,4 +574,25 @@ private final class ItemCellView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
+}
+
+// MARK: - Panel
+
+/// `NSPanel` subclass whose entire job is to answer `canBecomeKey == true`.
+///
+/// A `.nonactivatingPanel` is *permitted* to hold keyboard focus while its
+/// owning app stays inactive — but AppKit still routes typing to it only if
+/// the window reports that it can become key. The default for a panel that
+/// isn't activating its app can be `false`, which would leave the search
+/// field unable to receive input unless we activate Multipaste… and
+/// activating Multipaste is precisely the focus-handoff race this panel
+/// exists to avoid. So we say "yes, I can be key" explicitly while never
+/// becoming `main` (we're an accessory app, not a document app).
+///
+/// Matches Maccy's `FloatingPanel`. Per the AppKit docs the nonactivating
+/// behavior is fixed at init time, so the style mask must be set in the
+/// initializer (it is) and never mutated afterward.
+final class PickerPanel: NSPanel {
+    override var canBecomeKey: Bool { true }
+    override var canBecomeMain: Bool { false }
 }

@@ -306,24 +306,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
     }
 
-    /// Pasteboard-set + (optionally) synthesize ⌘V into whatever app
-    /// had focus before the picker opened.
+    /// Settle window applied AFTER the paste target is confirmed to have
+    /// focus, before synthesizing ⌘V. Two sub-perceptual hand-offs lag even
+    /// once the target is frontmost: the key-window transfer as our panel
+    /// orders out and the target's window regains key, and a
+    /// freshly-activated app becoming input-ready. Posting ⌘V into that gap
+    /// is what dropped pastes pre-2.2.0. A short fixed beat *after* the
+    /// focus condition is met (the same trick `SnippetEngine` uses between
+    /// its own synthesized keystrokes) closes it imperceptibly.
+    private static let pasteSettle: TimeInterval = 0.05
+
+    /// Write `item` to the pasteboard and (if enabled + permitted)
+    /// synthesize ⌘V into the app the user actually wants to paste into.
     ///
-    /// The flow:
-    ///  1. Write the item to the pasteboard.
-    ///  2. Reactivate `previousApp` so focus returns to where it was
-    ///     before the picker stole it.
-    ///  3. Poll `NSWorkspace.frontmostApplication` every 20 ms (up to
-    ///     500 ms) until it actually matches `previousApp`. We can't
-    ///     just sleep a fixed delay — focus switching is asynchronous
-    ///     and the time varies from ~30 ms to ~250 ms depending on
-    ///     load. The fixed 80 ms delay v1.7.0 used was the wrong
-    ///     pattern: too short on a busy machine, too long when fast.
-    ///  4. Once focus has actually returned, synthesize ⌘V.
+    /// Since v2.2.0 the picker is a non-activating panel, so the app that
+    /// was frontmost before it opened *stays* frontmost — the common case
+    /// is simply "settle a beat, then ⌘V into it," with no activation
+    /// round-trip to race against. `PasteRouting` picks the path:
     ///
-    /// If `previousApp` is nil (e.g. menu-bar quick-pick), skip the
-    /// reactivation step — Multipaste's menu has already returned focus
-    /// to the previous app on dismiss.
+    ///  - `.immediate` — previous app still frontmost (expected): settle, paste.
+    ///  - `.restoreFocus` — focus somehow landed on us: hand it back
+    ///    cooperatively (macOS 14+ requires the active app to *yield*
+    ///    before another app's `activate()` is honored), wait for it, paste.
+    ///  - `.clipboardOnly` — we're frontmost with no known target: don't
+    ///    paste into ourselves; the item is on the clipboard for a manual ⌘V.
     private func pickAndPaste(_ item: ClipboardItem, previousApp: NSRunningApplication?) {
         Paster.put(item)
         guard prefs.pasteOnSelect else {
@@ -336,41 +342,52 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             return
         }
 
-        if let target = previousApp {
-            target.activate(options: [])
-            Diagnostics.log("pickAndPaste: reactivating \(target.bundleIdentifier ?? "?") pid=\(target.processIdentifier)")
-        }
+        let mePID = ProcessInfo.processInfo.processIdentifier
+        let frontPID = NSWorkspace.shared.frontmostApplication?.processIdentifier
+        let weAreFrontmost = (frontPID == mePID)
 
-        waitForFocus(of: previousApp, timeout: 0.5) { resolved in
-            if resolved {
-                Diagnostics.log("pickAndPaste: focus restored, synthesizing ⌘V")
-            } else {
-                Diagnostics.log("pickAndPaste: focus restore TIMED OUT, synthesizing ⌘V anyway")
+        switch PasteRouting.route(weAreFrontmost: weAreFrontmost,
+                                  hasPreviousApp: previousApp != nil) {
+        case .immediate:
+            Diagnostics.log("pickAndPaste: immediate (front=\(frontPID.map(String.init) ?? "?")), settling \(Int(Self.pasteSettle * 1000))ms then ⌘V")
+            DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteSettle) {
+                Paster.simulateCommandV()
             }
-            Paster.simulateCommandV()
+
+        case .restoreFocus:
+            guard let target = previousApp else { return } // routing guarantees non-nil here
+            if #available(macOS 14.0, *) {
+                // Cooperative activation: we're the active app, so we must
+                // yield before the target's activate() will be honored.
+                NSApp.yieldActivation(to: target)
+                target.activate(from: .current, options: [])
+            } else {
+                target.activate(options: [])
+            }
+            Diagnostics.log("pickAndPaste: restoreFocus → \(target.bundleIdentifier ?? "?") pid=\(target.processIdentifier)")
+            waitForFocus(of: target, timeout: 0.5) { resolved in
+                Diagnostics.log("pickAndPaste: focus \(resolved ? "restored" : "restore TIMED OUT"), settling then ⌘V")
+                DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteSettle) {
+                    Paster.simulateCommandV()
+                }
+            }
+
+        case .clipboardOnly:
+            Diagnostics.log("pickAndPaste: clipboardOnly — frontmost with no paste target; item left on clipboard")
         }
     }
 
-    /// Poll `NSWorkspace.frontmostApplication` every 20 ms until it
-    /// matches `target`, or until `timeout` seconds elapse. Calls
-    /// `completion` on the main queue with `resolved: true` when the
-    /// target became frontmost, or `resolved: false` on timeout.
-    ///
-    /// If `target` is nil, fires `completion(true)` after a single
-    /// 50 ms grace period — gives the menu a beat to finish dismissing.
-    private func waitForFocus(of target: NSRunningApplication?,
+    /// Poll `NSWorkspace.frontmostApplication` every 20 ms until it matches
+    /// `target`, or until `timeout` seconds elapse. Calls `completion` on
+    /// the main queue with `resolved: true` when the target became
+    /// frontmost, or `false` on timeout. Used only by the `.restoreFocus`
+    /// fallback in `pickAndPaste`.
+    private func waitForFocus(of target: NSRunningApplication,
                               timeout: TimeInterval,
                               completion: @escaping (_ resolved: Bool) -> Void) {
-        if target == nil {
-            DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(50)) {
-                completion(true)
-            }
-            return
-        }
         let start = Date()
         func tick() {
-            if let target = target,
-               NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier {
+            if NSWorkspace.shared.frontmostApplication?.processIdentifier == target.processIdentifier {
                 completion(true)
                 return
             }

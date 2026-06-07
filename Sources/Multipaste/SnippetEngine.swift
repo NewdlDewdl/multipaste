@@ -23,8 +23,11 @@ import MultipasteCore
 final class SnippetEngine {
 
     /// Magic value placed in `CGEventSource.userData` for events we
-    /// generate ourselves. Mirrors HotKeyManager's signature ('MPST').
-    static let synthMarker: Int64 = 0x4D505354
+    /// generate ourselves, so this tap skips Multipaste's own synthesized
+    /// keystrokes. Single source of truth lives in `Paster` (both the
+    /// snippet expander and the picker paste synthesize ⌘V and must mark it
+    /// identically).
+    static let synthMarker: Int64 = Paster.synthMarker
 
     private let store: HistoryStore
     private var eventTap: CFMachPort?
@@ -152,7 +155,10 @@ final class SnippetEngine {
         // Briefly wait so the target app applies the deletes before paste.
         DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(20)) {
             Paster.put(item)
-            self.sendCommandV()
+            // Shared hardened ⌘V (left-Command device bit + session tap +
+            // input suppression). Marked with `Paster.synthMarker`, so the
+            // tap above lets it through.
+            Paster.simulateCommandV()
         }
     }
 
@@ -166,16 +172,6 @@ final class SnippetEngine {
         let src = source()
         let down = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: true)
         let up   = CGEvent(keyboardEventSource: src, virtualKey: 51, keyDown: false)
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
-    }
-
-    private func sendCommandV() {
-        let src = source()
-        let down = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: true)
-        let up   = CGEvent(keyboardEventSource: src, virtualKey: 9, keyDown: false)
-        down?.flags = .maskCommand
-        up?.flags = .maskCommand
         down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
     }
