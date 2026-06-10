@@ -131,7 +131,7 @@ enum Diagnostics {
         }
         if let fh = try? FileHandle(forWritingTo: url) {
             defer { try? fh.close() }
-            try? fh.seekToEnd()
+            _ = try? fh.seekToEnd()
             try? fh.write(contentsOf: data)
         }
     }

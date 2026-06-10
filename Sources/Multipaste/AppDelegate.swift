@@ -18,8 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var picker = PickerWindow(
         store: store,
         prefs: prefs,
-        onPick: { [weak self] item, previousApp in
-            self?.pickAndPaste(item, previousApp: previousApp)
+        onPick: { [weak self] items, previousApp in
+            self?.pickAndPaste(items, previousApp: previousApp)
         },
         onEditTrigger: { [weak self] item in
             self?.promptForTrigger(item: item)
@@ -54,7 +54,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         prefs: prefs,
         initialAccessibilityGranted: Permissions.isTrustedForAccessibility,
         onShowPicker: { [weak self] in self?.picker.show() },
-        onPasteItem:  { [weak self] item in self?.pickAndPaste(item, previousApp: nil) },
+        onPasteItem:  { [weak self] item in self?.pickAndPaste([item], previousApp: nil) },
         onShowSettings: { [weak self] in self?.settings.show() },
         onCheckForUpdates: { [weak self] in self?.updateService.checkNow() },
         onGrantAccessibility: { [weak self] in self?.walkThroughAccessibilityGrant() },
@@ -316,6 +316,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// its own synthesized keystrokes) closes it imperceptibly.
     private static let pasteSettle: TimeInterval = 0.05
 
+    /// Deliver one or more picked items to the app the user wants to
+    /// paste into. `MultiPasteComposer` decides the shape:
+    ///
+    ///  - `.single` / `.combined`: ONE pasteboard write + ONE ⌘V (the
+    ///    classic path; combined is text joined with the user's
+    ///    separator, or one merged multi-file pasteboard).
+    ///  - `.sequential`: items that cannot merge (images in the mix)
+    ///    paste one after another in mark order, with a settle beat
+    ///    between pasteboard swaps.
+    ///
+    /// The combined item also flows into history automatically: the
+    /// ClipboardMonitor's 300 ms poll sees the changeCount bump from
+    /// `Paster.put` and inserts it like any other copy, so a merged
+    /// multi-paste becomes a single reusable history item for free.
+    private func pickAndPaste(_ items: [ClipboardItem], previousApp: NSRunningApplication?) {
+        guard let plan = MultiPasteComposer.plan(items: items,
+                                                 separator: prefs.multiPasteSeparator) else { return }
+        switch plan {
+        case .single(let item):
+            deliver(item, previousApp: previousApp, label: "single")
+        case .combined(let item):
+            deliver(item, previousApp: previousApp, label: "combined(\(items.count) items)")
+        case .sequential(let sequence):
+            deliverSequentially(sequence, previousApp: previousApp)
+        }
+    }
+
     /// Write `item` to the pasteboard and (if enabled + permitted)
     /// synthesize ⌘V into the app the user actually wants to paste into.
     ///
@@ -330,14 +357,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///    before another app's `activate()` is honored), wait for it, paste.
     ///  - `.clipboardOnly` — we're frontmost with no known target: don't
     ///    paste into ourselves; the item is on the clipboard for a manual ⌘V.
-    private func pickAndPaste(_ item: ClipboardItem, previousApp: NSRunningApplication?) {
+    private func deliver(_ item: ClipboardItem, previousApp: NSRunningApplication?, label: String) {
         Paster.put(item)
+        routeAndPaste(previousApp: previousApp, label: label) {
+            Paster.simulateCommandV()
+        }
+    }
+
+    /// Multi-paste fallback for un-mergeable picks (an image in the mix):
+    /// paste each item in turn. The first pasteboard write happens up
+    /// front so even a guard-bail leaves something useful on the
+    /// clipboard; on `.clipboardOnly` we stop there; synthesizing a
+    /// burst of ⌘V with no target would paste into Multipaste itself.
+    private func deliverSequentially(_ items: [ClipboardItem], previousApp: NSRunningApplication?) {
+        guard let first = items.first else { return }
+        Paster.put(first)
+        routeAndPaste(previousApp: previousApp, label: "sequential(\(items.count) items)") { [weak self] in
+            self?.pasteSequentially(items, index: 0)
+        }
+    }
+
+    /// Shared guard + `PasteRouting` switch for both delivery shapes.
+    /// `paste` runs once the target app is ready for keystrokes (already
+    /// settled); on `.clipboardOnly` it never runs; whatever the caller
+    /// put on the pasteboard stays available for a manual ⌘V.
+    private func routeAndPaste(previousApp: NSRunningApplication?, label: String,
+                               paste: @escaping () -> Void) {
         guard prefs.pasteOnSelect else {
-            Diagnostics.log("pickAndPaste: pasteOnSelect=off, item on clipboard only")
+            Diagnostics.log("pickAndPaste[\(label)]: pasteOnSelect=off, item on clipboard only")
             return
         }
         guard Permissions.isTrustedForAccessibility else {
-            Diagnostics.log("pickAndPaste: Accessibility not granted, item on clipboard only")
+            Diagnostics.log("pickAndPaste[\(label)]: Accessibility not granted, item on clipboard only")
             Permissions.promptForAccessibility()
             return
         }
@@ -349,9 +400,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         switch PasteRouting.route(weAreFrontmost: weAreFrontmost,
                                   hasPreviousApp: previousApp != nil) {
         case .immediate:
-            Diagnostics.log("pickAndPaste: immediate (front=\(frontPID.map(String.init) ?? "?")), settling \(Int(Self.pasteSettle * 1000))ms then ⌘V")
+            Diagnostics.log("pickAndPaste[\(label)]: immediate (front=\(frontPID.map(String.init) ?? "?")), settling \(Int(Self.pasteSettle * 1000))ms then ⌘V")
             DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteSettle) {
-                Paster.simulateCommandV()
+                paste()
             }
 
         case .restoreFocus:
@@ -364,16 +415,38 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             } else {
                 target.activate(options: [])
             }
-            Diagnostics.log("pickAndPaste: restoreFocus → \(target.bundleIdentifier ?? "?") pid=\(target.processIdentifier)")
+            Diagnostics.log("pickAndPaste[\(label)]: restoreFocus → \(target.bundleIdentifier ?? "?") pid=\(target.processIdentifier)")
             waitForFocus(of: target, timeout: 0.5) { resolved in
-                Diagnostics.log("pickAndPaste: focus \(resolved ? "restored" : "restore TIMED OUT"), settling then ⌘V")
+                Diagnostics.log("pickAndPaste[\(label)]: focus \(resolved ? "restored" : "restore TIMED OUT"), settling then ⌘V")
                 DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteSettle) {
-                    Paster.simulateCommandV()
+                    paste()
                 }
             }
 
         case .clipboardOnly:
-            Diagnostics.log("pickAndPaste: clipboardOnly — frontmost with no paste target; item left on clipboard")
+            Diagnostics.log("pickAndPaste[\(label)]: clipboardOnly: frontmost with no paste target; item left on clipboard")
+        }
+    }
+
+    /// Paste `items[index...]` one at a time: pasteboard write, settle a
+    /// beat, ⌘V, wait `sequentialInterItemDelay` for the target to have
+    /// READ the pasteboard (apps read it while processing the ⌘V from
+    /// their event queue; swapping sooner would feed item N+1's bytes
+    /// into paste N), recurse. The last item naturally stays on the
+    /// clipboard, matching single-paste semantics.
+    private func pasteSequentially(_ items: [ClipboardItem], index: Int) {
+        guard index < items.count else {
+            Diagnostics.log("pickAndPaste[sequential]: complete (\(items.count) items)")
+            return
+        }
+        Paster.put(items[index])
+        DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteSettle) { [weak self] in
+            Paster.simulateCommandV()
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + MultiPasteComposer.sequentialInterItemDelay
+            ) {
+                self?.pasteSequentially(items, index: index + 1)
+            }
         }
     }
 

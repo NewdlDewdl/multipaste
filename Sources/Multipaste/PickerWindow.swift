@@ -14,7 +14,10 @@ final class PickerWindow: NSObject, NSWindowDelegate,
 
     private let store: HistoryStore
     private let prefs: Preferences
-    private let onPick: (ClipboardItem, NSRunningApplication?) -> Void
+    /// Called with the picked items IN PASTE ORDER (a single-element
+    /// array for the classic one-item pick; mark order for multi-pastes)
+    /// plus the app to paste into.
+    private let onPick: ([ClipboardItem], NSRunningApplication?) -> Void
     private let onEditTrigger: (ClipboardItem) -> Void
 
     /// The app that was frontmost when the picker opened. We re-activate
@@ -38,9 +41,14 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private var storeToken: HistoryStore.Token?
     private var keyMonitor: Any?
 
+    /// Multi-paste marks (⌥↩ / ⌘-click / Space / ⌥⌘A). Keyed by item id
+    /// so they survive re-filtering; order is mark order: exactly the
+    /// order the items will paste in. Reset on every `show()`.
+    private var marks = MarkList<UUID>()
+
     init(store: HistoryStore,
          prefs: Preferences,
-         onPick: @escaping (ClipboardItem, NSRunningApplication?) -> Void,
+         onPick: @escaping ([ClipboardItem], NSRunningApplication?) -> Void,
          onEditTrigger: @escaping (ClipboardItem) -> Void) {
         self.store = store
         self.prefs = prefs
@@ -112,6 +120,10 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         tableView.dataSource = self
         tableView.delegate = self
         tableView.target = self
+        // Single click: only meaningful with ⌘ held (toggle a multi-paste
+        // mark). A plain click just selects, which the table already did
+        // before the action fires.
+        tableView.action = #selector(tableClicked)
         tableView.doubleAction = #selector(commitSelection)
         panel.delegate = self
 
@@ -168,9 +180,12 @@ final class PickerWindow: NSObject, NSWindowDelegate,
             previouslyActiveApp = f
         }
 
-        // Reset query each invocation — surprising otherwise
+        // Reset query and marks each invocation; surprising otherwise
+        // (stale marks from a dismissed picker would silently multi-paste).
         query = ""
         searchField.stringValue = ""
+        marks.clear()
+        updateMarkHint()
         reload()
         positionOnActiveScreen()
         // Present as a NON-ACTIVATING key panel: order it above everything
@@ -254,6 +269,12 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         pendingReselectID = nil
 
         filtered = store.search(query)
+        // Marks survive filtering (they key on item id, not row), but not
+        // deletion/eviction: prune against what actually EXISTS, never
+        // against the filtered subset.
+        let markCount = marks.count
+        marks.prune(keeping: Set(store.items.map(\.id)))
+        if marks.count != markCount { updateMarkHint() }
         tableView.reloadData()
 
         guard !filtered.isEmpty else { return }
@@ -270,15 +291,33 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     /// unpin / delete so the user sees an immediate "yes, I did that"
     /// signal even when the row's visual change isn't dramatic.
     private var hintRestoreTimer: Timer?
-    private let defaultHintText = "↑↓/Tab select   ↩ paste   ⌘1–9 quick-pick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close"
+    private let defaultHintText = "↑↓ select   ↩ paste   ⌥↩ mark   ⌘1–9 quick-pick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close"
 
     private func flashHint(_ message: String, duration: TimeInterval = 1.6) {
         hintLabel.stringValue = message
         hintLabel.textColor = .controlAccentColor
         hintRestoreTimer?.invalidate()
         hintRestoreTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
-            self?.hintLabel.stringValue = self?.defaultHintText ?? ""
-            self?.hintLabel.textColor = .secondaryLabelColor
+            // Restore to the mark-aware hint, not blindly to the default;
+            // a pin/delete flash mid-marking shouldn't erase the "N marked"
+            // status line.
+            self?.updateMarkHint()
+        }
+    }
+
+    /// The persistent (non-flash) state of the hint bar: the default key
+    /// legend when nothing is marked, or a live "N marked" status while
+    /// a multi-paste is being assembled.
+    private func updateMarkHint() {
+        hintRestoreTimer?.invalidate()
+        if marks.isEmpty {
+            hintLabel.stringValue = defaultHintText
+            hintLabel.textColor = .secondaryLabelColor
+        } else {
+            let n = marks.count
+            hintLabel.stringValue =
+                "\(n) marked · ↩ pastes all \(n) in badge order   ⌥↩/⌘-click mark   ⌥⌘A all   esc clear"
+            hintLabel.textColor = .controlAccentColor
         }
     }
 
@@ -287,7 +326,8 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     func numberOfRows(in tableView: NSTableView) -> Int { filtered.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        ItemCellView(item: filtered[row], index: row)
+        ItemCellView(item: filtered[row], index: row,
+                     markIndex: marks.position(of: filtered[row].id))
     }
 
     // MARK: - NSSearchFieldDelegate
@@ -302,15 +342,34 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private func handleKey(_ ev: NSEvent) -> Bool {
         let isCmd = ev.modifierFlags.contains(.command)
         let isShift = ev.modifierFlags.contains(.shift)
+        let isOption = ev.modifierFlags.contains(.option)
         let chars = ev.charactersIgnoringModifiers ?? ""
 
         switch ev.keyCode {
-        case 53: // esc
-            hide(); return true
-        case 36, 76: // return / enter
-            commitSelection(); return true
+        case 53: // esc: two-stage when marking: first clear marks, then close
+            if !marks.isEmpty {
+                clearMarksAndRedraw()
+                flashHint("Marks cleared; esc again closes")
+            } else {
+                hide()
+            }
+            return true
+        case 36, 76: // return / enter (⌥↩ = mark + step down)
+            if isOption {
+                toggleMarkOnSelection(advance: true)
+            } else {
+                commitSelection()
+            }
+            return true
         case 48: // tab
             handleTab(reverse: isShift); return true
+        case 49: // space: mark, but ONLY when the list (not search) has
+                 // focus; in the search field a space is just typing.
+            if case .row = currentFocusedRegion() {
+                toggleMarkOnSelection(advance: true)
+                return true
+            }
+            return false
         case 125: // arrow down
             moveSelection(by: 1); return true
         case 126: // arrow up
@@ -319,10 +378,17 @@ final class PickerWindow: NSObject, NSWindowDelegate,
             break
         }
 
+        // ⌥⌘A: mark all visible / unmark all visible. Checked before the
+        // other ⌘-chords; plain ⌘A still reaches the search field's
+        // select-all untouched.
+        if isCmd && isOption && chars.lowercased() == "a" {
+            toggleMarkAllVisible()
+            return true
+        }
         if isCmd, let digit = Int(chars), digit >= 1 && digit <= 9 {
             let idx = digit - 1
             if idx < filtered.count {
-                commitItem(filtered[idx])
+                commitItems([filtered[idx]])
             }
             return true
         }
@@ -343,21 +409,80 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         return false
     }
 
+    /// ↩ (and double-click). With marks: paste ALL marked items in badge
+    /// order. Without: classic single paste of the highlighted row.
     @objc private func commitSelection() {
+        if !marks.isEmpty {
+            // Resolve mark ids → items against the full store, not the
+            // filtered view; marked items may be filtered out right now
+            // and must still paste.
+            let byID = Dictionary(uniqueKeysWithValues: store.items.map { ($0.id, $0) })
+            let chosen = marks.ids.compactMap { byID[$0] }
+            guard !chosen.isEmpty else {
+                clearMarksAndRedraw()
+                return
+            }
+            commitItems(chosen)
+            return
+        }
         let row = tableView.selectedRow
         guard row >= 0 && row < filtered.count else { return }
-        let item = filtered[row]
-        commitItem(item)
+        commitItems([filtered[row]])
     }
 
-    /// Common path for return-on-selection AND ⌘1-9 quick pick: hide
-    /// panel, snapshot the target app, fire onPick with it. The AppDelegate
-    /// is responsible for re-activating the app and polling for focus
-    /// before synthesizing ⌘V.
-    private func commitItem(_ item: ClipboardItem) {
+    /// Common exit path for return-on-selection, multi-paste, AND ⌘1-9
+    /// quick pick: hide panel, snapshot the target app, fire onPick. The
+    /// AppDelegate owns routing + ⌘V synthesis from here.
+    private func commitItems(_ items: [ClipboardItem]) {
         let target = previouslyActiveApp
         hide()
-        onPick(item, target)
+        onPick(items, target)
+    }
+
+    // MARK: - Multi-paste marks
+
+    /// ⌘-click toggles a mark on the clicked row. Plain clicks fall
+    /// through (the table's own machinery already moved the selection).
+    @objc private func tableClicked() {
+        guard NSApp.currentEvent?.modifierFlags.contains(.command) == true else { return }
+        let row = tableView.clickedRow
+        guard row >= 0 && row < filtered.count else { return }
+        marks.toggle(filtered[row].id)
+        redrawMarks(preservingSelectionAt: row)
+        updateMarkHint()
+    }
+
+    private func toggleMarkOnSelection(advance: Bool) {
+        let row = tableView.selectedRow
+        guard row >= 0 && row < filtered.count else { return }
+        marks.toggle(filtered[row].id)
+        redrawMarks(preservingSelectionAt: row)
+        if advance { moveSelection(by: 1) }
+        updateMarkHint()
+    }
+
+    private func toggleMarkAllVisible() {
+        guard !filtered.isEmpty else { return }
+        let row = tableView.selectedRow
+        marks.toggleAll(filtered.map(\.id))
+        redrawMarks(preservingSelectionAt: row)
+        updateMarkHint()
+    }
+
+    private func clearMarksAndRedraw() {
+        let row = tableView.selectedRow
+        marks.clear()
+        redrawMarks(preservingSelectionAt: row)
+        updateMarkHint()
+    }
+
+    /// Rebuild every visible cell (badge numbers shift globally when a
+    /// mark in the middle is removed) without losing the highlight.
+    private func redrawMarks(preservingSelectionAt row: Int) {
+        tableView.reloadData()
+        if row >= 0 && row < filtered.count {
+            tableView.selectRowIndexes([row], byExtendingSelection: false)
+        }
     }
 
     private func moveSelection(by delta: Int) {
@@ -454,7 +579,10 @@ final class PickerWindow: NSObject, NSWindowDelegate,
 
 private final class ItemCellView: NSView {
 
-    init(item: ClipboardItem, index: Int) {
+    /// `markIndex` is the item's 1-based position in the multi-paste
+    /// order (nil = unmarked). Rendered as a filled accent badge so the
+    /// row visibly answers both "is this in the paste?" and "when?".
+    init(item: ClipboardItem, index: Int, markIndex: Int? = nil) {
         super.init(frame: .zero)
 
         // Pinned-row visual upgrade (v1.9.0): a chunky colored left
@@ -523,15 +651,33 @@ private final class ItemCellView: NSView {
             return iv
         }()
 
+        // Multi-paste order badge: a filled accent capsule with the
+        // item's 1-based paste position. Lives just left of the kind
+        // label so it reads as row *status*, like the pin marker.
+        let markBadge: NSTextField? = {
+            guard let n = markIndex else { return nil }
+            let lbl = NSTextField(labelWithString: " \(n) ")
+            lbl.font = .monospacedDigitSystemFont(ofSize: 10, weight: .bold)
+            lbl.textColor = .white
+            lbl.alignment = .center
+            lbl.wantsLayer = true
+            lbl.layer?.backgroundColor = NSColor.controlAccentColor.cgColor
+            lbl.layer?.cornerRadius = 7
+            lbl.layer?.masksToBounds = true
+            lbl.toolTip = "Pastes \(ordinal(n)); ↩ pastes all marked items"
+            return lbl
+        }()
+
         var allViews: [NSView] = [badge, kind, preview, pin]
         if let lbl = triggerLabel { allViews.append(lbl) }
         if let tv = thumbnailView { allViews.append(tv) }
+        if let mb = markBadge { allViews.append(mb) }
         for v in allViews {
             v.translatesAutoresizingMaskIntoConstraints = false
             addSubview(v)
         }
 
-        // Layout: [badge | thumbnail?(32) | preview | trigger? | kind | pin]
+        // Layout: [badge | thumbnail?(32) | preview | trigger? | mark? | kind | pin]
         let previewLeading: NSLayoutXAxisAnchor
         if let tv = thumbnailView {
             NSLayoutConstraint.activate([
@@ -545,15 +691,29 @@ private final class ItemCellView: NSView {
             previewLeading = badge.trailingAnchor
         }
 
+        // Trailing cluster chains right-to-left: pin ← kind ← mark? ← trigger?
+        let leftOfKind: NSLayoutXAxisAnchor
+        if let mb = markBadge {
+            NSLayoutConstraint.activate([
+                mb.trailingAnchor.constraint(equalTo: kind.leadingAnchor, constant: -8),
+                mb.centerYAnchor.constraint(equalTo: centerYAnchor),
+                mb.heightAnchor.constraint(equalToConstant: 14),
+                mb.widthAnchor.constraint(greaterThanOrEqualToConstant: 16),
+            ])
+            leftOfKind = mb.leadingAnchor
+        } else {
+            leftOfKind = kind.leadingAnchor
+        }
+
         let trailingOfPreview: NSLayoutXAxisAnchor
         if let lbl = triggerLabel {
             NSLayoutConstraint.activate([
-                lbl.trailingAnchor.constraint(equalTo: kind.leadingAnchor, constant: -8),
+                lbl.trailingAnchor.constraint(equalTo: leftOfKind, constant: -8),
                 lbl.centerYAnchor.constraint(equalTo: centerYAnchor),
             ])
             trailingOfPreview = lbl.leadingAnchor
         } else {
-            trailingOfPreview = kind.leadingAnchor
+            trailingOfPreview = leftOfKind
         }
 
         NSLayoutConstraint.activate([
@@ -574,6 +734,19 @@ private final class ItemCellView: NSView {
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) not supported") }
+
+    /// "1st" / "2nd" / "3rd" / "11th": for the mark badge tooltip.
+    private func ordinal(_ n: Int) -> String {
+        let suffix: String
+        switch (n % 100, n % 10) {
+        case (11...13, _): suffix = "th"
+        case (_, 1):       suffix = "st"
+        case (_, 2):       suffix = "nd"
+        case (_, 3):       suffix = "rd"
+        default:           suffix = "th"
+        }
+        return "\(n)\(suffix)"
+    }
 }
 
 // MARK: - Panel

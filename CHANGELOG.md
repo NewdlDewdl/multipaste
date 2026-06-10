@@ -1,5 +1,76 @@
 # Changelog
 
+## 2.3.0 (2026-06-10)
+
+**Mark several history items, press Return once, and they all paste:
+the namesake feature. Multipaste finally multi-pastes.**
+
+Open the picker (⌘⇧V), mark items with **⌥↩** (or **⌘-click**, or
+**Space** when focus is in the list), and each marked row grows a
+numbered accent badge showing its position in the paste. Marks follow
+the item, not the row, so you can change the search filter between
+marks: find one item, mark it, search for another, mark that too.
+**↩** then pastes everything in badge order. **⌥⌘A** marks (or
+unmarks) everything visible; **esc** clears marks first, closes second.
+The hint bar live-updates with the marked count the whole time.
+
+### How the paste actually happens
+
+`MultiPasteComposer` (pure, unit-tested policy) decides per pick:
+
+- **All text-like items** (plain text, rich text, file copies) merge
+  into ONE pasteboard write + ONE synthesized ⌘V, joined by a
+  configurable separator: newline by default, switchable to blank
+  line / space / tab / nothing in **Preferences → General →
+  "Multi-paste separator"**. (The pref stores the raw string, so
+  `defaults write com.rohin.multipaste multiPasteSeparator " · "`
+  works for separators the popup doesn't offer.) One write + one ⌘V
+  is atomic from the target app's perspective: no inter-paste timing
+  to race against, and the merged text lands in history as a single
+  reusable item.
+- **All file copies** merge into one multi-file pasteboard: pasting
+  three marked Finder files into a folder (or a chat composer)
+  delivers all three in one go, exactly as if they'd been ⌘C'd
+  together.
+- **Mixed picks containing images** (which can't concatenate with
+  anything) fall back to sequential delivery: pasteboard write → ⌘V →
+  150 ms settle → next, in mark order, reusing the v2.2.0-hardened
+  keystroke (device-bit ⌘V, session tap, non-activating panel; the
+  target app keeps focus for the whole burst).
+
+Routing reuses `PasteRouting` unchanged: the common case is
+`.immediate` into the still-focused previous app; `.clipboardOnly`
+(no known target) puts the combined item (or the first sequential
+item) on the clipboard for a manual ⌘V instead of pasting into
+Multipaste itself.
+
+### What changed
+
+- **`Sources/MultipasteCore/MarkList.swift`** (new): ordered-set mark
+  policy: paste order is *mark* order, marks key on item identity
+  (survive re-filtering), `prune(keeping:)` drops marks whose items
+  were deleted/evicted, `toggleAll` round-trips (⌥⌘A twice = no
+  marks) and never reshuffles hand-placed marks.
+- **`Sources/MultipasteCore/MultiPasteComposer.swift`** (new): the
+  single/combined/sequential decision table above, plus the
+  150 ms `sequentialInterItemDelay` contract (locked by a test so an
+  "optimization" can't reintroduce the pasteboard-swap race).
+- **`Sources/MultipasteCore/MultiPasteSeparator.swift`** (new):
+  popup-choice ↔ literal mapping for the separator preference.
+- **`Sources/MultipasteCore/Preferences.swift`**: `multiPasteSeparator`
+  (default `"\n"`), stored as the literal string.
+- **`Sources/Multipaste/PickerWindow.swift`**: mark keystrokes (⌥↩,
+  Space-in-list, ⌘-click, ⌥⌘A), numbered accent badges on marked rows,
+  two-stage esc, mark-aware hint bar, `onPick` now delivers
+  `[ClipboardItem]` in paste order.
+- **`Sources/Multipaste/AppDelegate.swift`**: plan-driven delivery:
+  shared `routeAndPaste` guard/routing for both shapes, recursive
+  `pasteSequentially` executor for the image case.
+- **`Sources/Multipaste/SettingsWindowController.swift`**: separator
+  popup in the General tab.
+- **Tests**: 39 new (15 `MarkList`, 15 `MultiPasteComposer`, 6
+  `MultiPasteSeparator`, 3 `Preferences`); 271 total.
+
 ## 2.2.0 (2026-06-07)
 
 **Press ⌘⇧V, pick an item, hit Return, and it pastes the first time. The

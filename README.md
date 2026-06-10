@@ -9,9 +9,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.2.0 (universal, Intel + Apple Silicon)</strong></a><br>
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.3.0 (universal, Intel + Apple Silicon)</strong></a><br>
   <a href="#install">Install</a> ·
   <a href="#keys">Keys</a> ·
+  <a href="#paste-many-things-at-once">Multi-paste</a> ·
   <a href="#snippet-expansion">Snippets</a> ·
   <a href="#how-does-it-compare">Compare</a> ·
   <a href="#privacy">Privacy</a> ·
@@ -19,21 +20,22 @@
   <a href="#contributing">Contribute</a>
 </p>
 
-<p align="center"><code>Press ⌘⇧V anywhere → picker appears → ↑↓ pick → ↩ paste</code></p>
+<p align="center"><code>Press ⌘⇧V anywhere → ↑↓ pick → ↩ paste&nbsp;&nbsp;·&nbsp;&nbsp;⌥↩ mark several → ↩ pastes them all</code></p>
 
 ---
 
 A native clipboard history *and* snippet expander with a global hotkey,
-a picker window, pinning, search, full keyboard navigation, and an
-automatic update check. Built for macOS 13+ (tested on macOS 26 Tahoe).
+a picker window, multi-paste (mark several items, paste them in one
+go), pinning, search, full keyboard navigation, and an automatic
+update check. Built for macOS 13+ (tested on macOS 26 Tahoe).
 
-No subscriptions, no Electron, no telemetry, no account. ~1.5 MB
-universal Swift binary in a 712 KB DMG (one binary for Intel + Apple
+No subscriptions, no Electron, no telemetry, no account. ~1.9 MB
+universal Swift binary in an ~840 KB DMG (one binary for Intel + Apple
 Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
-**Latest release:** [v2.2.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+**Latest release:** [v2.3.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 232 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
+&nbsp;·&nbsp; **Tests:** 271 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
 
 ---
 
@@ -41,8 +43,8 @@ Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-2.2.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
-   from the latest release (712 KB universal DMG — runs on both Intel and Apple Silicon).
+1. Download **[Multipaste-2.3.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+   from the latest release (universal DMG: runs on both Intel and Apple Silicon).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
    **Open**, then **Open** again in the security warning. *(macOS asks
@@ -92,15 +94,60 @@ In the picker:
 | ------------------ | --------------------------------------------------------------- |
 | `↑` / `↓`          | Move selection                                                  |
 | `Tab` / `⇧Tab`     | Walk search ↔ row 1 ↔ row 2 ↔ … (linear focus traversal)        |
-| `↩`                | Paste selected item                                             |
+| `↩`                | Paste selected item (or ALL marked items, in badge order)       |
+| `⌥↩` / `⌘-click`   | Mark / unmark item for multi-paste (badge shows paste order)    |
+| `space` (in list)  | Mark / unmark item and step down (search field keeps its space) |
+| `⌥⌘A`              | Mark all visible items (again: unmark them)                     |
 | `⌘1` … `⌘9`        | Quick-paste the Nth visible item                                |
 | `⌘P`               | Pin / unpin selected item (pinned items always show first)      |
 | `⌘E`               | Set / edit a snippet trigger for the item                       |
 | `⌘⌫`               | Delete selected item from history                               |
-| `esc`              | Close picker                                                    |
+| `esc`              | Clear marks if any, else close picker                           |
 | type anything      | Filter the history (case-insensitive)                           |
 
 The default global hotkey is `⌘⇧V`. Change it in **Preferences → General → Hotkey**.
+
+---
+
+## Paste many things at once
+
+The namesake feature: mark several history items and paste them ALL
+with a single Return. Collect a name, an address, and a phone number
+into one form-filling paste; drop three error messages into one bug
+report; send a screenshot and its caption together.
+
+1. Open the picker (`⌘⇧V`).
+2. Mark items with `⌥↩` (works straight from the search field),
+   `⌘-click`, or `space` when focus is in the list. Each marked row
+   gets a numbered accent badge: that number is its position in the
+   paste.
+3. Change the search between marks if you like. Marks follow the
+   *item*, not the row, so filtering never loses them. `⌥⌘A` marks
+   everything currently visible.
+4. Press `↩`. Everything pastes in badge order.
+
+What the target app receives:
+
+- **All text-ish items** (plain text, rich text, file copies) arrive
+  as ONE paste, joined by the separator chosen in **Preferences →
+  General → "Multi-paste separator"**: newline (default), blank line,
+  space, tab, or nothing. The merged text also lands in history as a
+  single item, ready to re-paste.
+- **All file copies** arrive as one multi-file paste. Three marked
+  files paste into Finder, a chat composer, or an email draft exactly
+  as if all three had been ⌘C'd together.
+- **Mixes that include images** (which can't be concatenated with
+  anything) paste sequentially in badge order, about 0.2 s apart,
+  into the still-focused target app.
+
+`esc` clears the marks before it closes the picker, and marks reset
+every time the picker opens, so a stale selection can never surprise
+you. Power users can set any separator string, even ones the popup
+doesn't list:
+
+```sh
+defaults write com.rohin.multipaste multiPasteSeparator " · "
+```
 
 ---
 
@@ -254,6 +301,7 @@ open). Three tabs:
   - Hotkey recorder (click, press your combo, release)
   - Auto-paste on select (checkbox)
   - Start at login (uses `SMAppService.mainApp.register()`)
+  - Multi-paste separator (newline / blank line / space / tab / nothing)
   - History size (10 – 2000)
 - **Snippets** — list of all triggers, with Edit Trigger / Remove
   Trigger buttons. Add new ones via the picker (`⌘E`).
@@ -290,6 +338,8 @@ plain letters would be swallowed system-wide). Esc cancels recording.
 - The only tool that combines clipboard history *and* trigger-based
   snippet expansion in one app. Maccy doesn't expand; Espanso doesn't
   remember.
+- True multi-paste: mark several items in the picker and paste them
+  all with one Return, merged text or a single multi-file paste.
 - Free for personal use + source-available vs Paste / Pastebot / Alfred
   (paid) and Raycast (closed-source + telemetry). Source is on GitHub,
   read it, audit it, file issues against it.
@@ -474,9 +524,10 @@ does not make network calls outside the once-a-day update check
 **Two Swift targets:**
 
 - **`MultipasteCore`** (library, pure Swift, no AppKit) —
-  `ClipboardItem`, `HistoryStore`, `Preferences`, `SnippetMatcher`,
+  `ClipboardItem`, `HistoryStore`, `MarkList`, `MultiPasteComposer`,
+  `MultiPasteSeparator`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 232 unit tests live here (incl. ScreenshotDetector for the screenshots-to-clipboard feature; PasteSynthesis + PasteRouting which lock the ⌘V device-bit and paste-path routing behind the v2.2.0 paste fix; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
+  All testable. 271 unit tests live here (incl. MarkList + MultiPasteComposer for the v2.3.0 multi-paste feature; ScreenshotDetector for the screenshots-to-clipboard feature; PasteSynthesis + PasteRouting which lock the ⌘V device-bit and paste-path routing behind the v2.2.0 paste fix; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -510,7 +561,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test                    # runs all 232 unit tests in ~330 ms
+make test                    # runs all 271 unit tests in ~150 ms
 make smoke-test              # end-to-end integration test of the screenshot pipeline
 make preview-update-dialog   # visually preview the "vX.Y.Z is available" dialog
 make verify-app              # verifies the built .app: universal binary + codesign + plist
@@ -572,7 +623,11 @@ Coverage:
 | `InfoPlist`            | 7     | CFBundleIdentifier in Info.plist matches Swift's `MultipasteVersion.bundleIdentifier` (drift breaks every TCC grant + Login Item + preference + launch agent — anything keyed by bundle ID); CFBundlePackageType is `APPL`; NSPrincipalClass is `NSApplication`; LSUIElement is true (menubar-only, no Dock icon); LSMinimumSystemVersion is `13.0`; NSAppleEventsUsageDescription present + non-empty + mentions Multipaste/paste; NSHumanReadableCopyright references PolyForm Strict + commercial-license email (Finder Get Info shows the right contact) |
 | `PasteSynthesis`       | 7     | ⌘V flag composition: the left-Command device bit (`NX_DEVICELCMDKEYMASK`, `0x8`) is OR'd into `commandVFlags` so Chromium/Electron honor the synthesized Command (Flycut #18); exact `0x10_0008` value; **regression guard that the flags never silently revert to bare `maskCommand`** (the v2.1.x paste-into-Electron bug) |
 | `PasteRouting`         | 4     | paste-path decision: previous app still frontmost is `.immediate`, focus on Multipaste with a captured target is `.restoreFocus`, frontmost with no target is `.clipboardOnly` |
-| **Total**              | **232**| Pure logic; UI is integration-tested manually          |
+| `MarkList`             | 15    | (v2.3.0) multi-paste mark policy: paste order is MARK order not display order, toggle/unmark renumbering, 1-based badge positions, mark-all appends without reshuffling hand-placed marks, ⌥⌘A round-trips, unmark-all touches only visible elements, `prune(keeping:)` drops deleted items while preserving order, marks-survive-filtering design guard |
+| `MultiPasteComposer`   | 15    | (v2.3.0) the single/combined/sequential decision table: empty pick plans nothing, one item stays `.single` (exact item, even an image), all-text combines with the separator in mark order (newline/blank-line/space/tab/empty all covered), RTF contributes plain text, all-file picks merge into ONE multi-file pasteboard (order-preserving, deduped keeping first slot), text+files combines via paths, any image forces `.sequential` in mark order, combined item is a fresh history-ready `.text` item, per-kind `textRepresentation`, **inter-item delay locked to the 0.1–0.3 s window** (below: pasteboard-swap race; above: feels broken) |
+| `MultiPasteSeparator`  | 6     | (v2.3.0) popup ↔ literal mapping: exact literals, every choice round-trips, literals + labels unique, unknown literal has no popup row but is still honored, registered default is the newline choice |
+| `Preferences` (multi-paste separator) | 3 | (v2.3.0) defaults to newline, persists across instances, accepts arbitrary hand-written separator strings |
+| **Total**              | **271**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -585,11 +640,13 @@ README.md  LICENSE.md  CHANGELOG.md
 
 Sources/
   MultipasteCore/      ← testable, pure Swift:
-                          ClipboardItem  HistoryStore  Preferences
-                          PasteboardAugmenter  ProcessTable
-                          ReleaseNotesFormatter  ScreenshotDetector
-                          SemanticVersion  SnippetMatcher
-                          TabNavigation  UpdateChecker  Version
+                          ClipboardItem  HistoryStore  MarkList
+                          MultiPasteComposer  MultiPasteSeparator
+                          PasteboardAugmenter  Preferences
+                          ProcessTable  ReleaseNotesFormatter
+                          ScreenshotDetector  SemanticVersion
+                          SnippetMatcher  TabNavigation
+                          UpdateChecker  Version
   Multipaste/          ← AppKit / system:
                           AppDelegate  AppPaths  ClipboardMonitor
                           Diagnostics  HotKeyManager  HotkeyRecorderField
@@ -626,7 +683,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 232 unit tests (~330 ms)
+make test          # run all 271 unit tests (~150 ms)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -872,6 +929,9 @@ back to the far-away slot where it was first copied. v2.2.0 fixed the
 picker's "press Return and nothing pastes until you reopen it a few times"
 race: the picker is now a non-activating panel that never steals focus from
 the app you're pasting into, and the synthesized ⌘V carries the
-device-dependent Command bit Chromium and Electron apps require. 232 tests
-now.
+device-dependent Command bit Chromium and Electron apps require. v2.3.0
+delivered the namesake feature: mark several items in the picker (⌥↩,
+⌘-click, Space, ⌥⌘A) and one Return pastes them all, as merged text with a
+configurable separator, as a single multi-file paste, or sequentially when
+images are in the mix. 271 tests now.
 Search before building. Test before shipping. Boil the ocean.

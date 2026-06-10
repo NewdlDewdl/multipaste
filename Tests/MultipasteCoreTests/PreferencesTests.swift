@@ -18,6 +18,9 @@ enum PreferencesTests {
         TestRegistry.register("Preferences/autoCopyScreenshotsDefaultsTrue", autoCopyScreenshotsDefaultsTrue)
         TestRegistry.register("Preferences/autoCopyScreenshotsPersists", autoCopyScreenshotsPersists)
         TestRegistry.register("Preferences/autoCopyScreenshotsRoundTripsOff", autoCopyScreenshotsRoundTripsOff)
+        TestRegistry.register("Preferences/multiPasteSeparatorDefaultsToNewline", multiPasteSeparatorDefaultsToNewline)
+        TestRegistry.register("Preferences/multiPasteSeparatorPersists", multiPasteSeparatorPersists)
+        TestRegistry.register("Preferences/multiPasteSeparatorAcceptsArbitraryString", multiPasteSeparatorAcceptsArbitraryString)
     }
 
     private static func freshDefaults() -> UserDefaults {
@@ -129,5 +132,32 @@ enum PreferencesTests {
         try expect(p1.autoCopyScreenshots)
         let p2 = Preferences(defaults: d)
         try expect(p2.autoCopyScreenshots)
+    }
+
+    static func multiPasteSeparatorDefaultsToNewline() throws {
+        let p = Preferences(defaults: freshDefaults())
+        try expectEqual(p.multiPasteSeparator, "\n",
+                        "fresh install joins combined multi-pastes one-item-per-line")
+    }
+
+    static func multiPasteSeparatorPersists() throws {
+        let d = freshDefaults()
+        let p1 = Preferences(defaults: d)
+        p1.multiPasteSeparator = "\t"
+        let p2 = Preferences(defaults: d)
+        try expectEqual(p2.multiPasteSeparator, "\t")
+    }
+
+    /// The pref stores a raw literal, deliberately unvalidated: a power
+    /// user can `defaults write` any separator (" · ", ", ", "; ") and
+    /// the composer will honor it even though the Settings popup has no
+    /// matching row.
+    static func multiPasteSeparatorAcceptsArbitraryString() throws {
+        let d = freshDefaults()
+        let p1 = Preferences(defaults: d)
+        p1.multiPasteSeparator = " · "
+        try expectEqual(p1.multiPasteSeparator, " · ")
+        let p2 = Preferences(defaults: d)
+        try expectEqual(p2.multiPasteSeparator, " · ")
     }
 }

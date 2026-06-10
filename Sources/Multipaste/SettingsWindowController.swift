@@ -92,6 +92,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     private var launchAtLoginCheckbox: NSButton!
     private var augmentFileCopiesCheckbox: NSButton!
     private var autoCopyScreenshotsCheckbox: NSButton!
+    private var multiPasteSeparatorPopup: NSPopUpButton!
     private var maxHistoryField: NSTextField!
     private var maxHistoryStepper: NSStepper!
 
@@ -132,6 +133,29 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         screenshotsCB.toolTip = "When macOS saves a screenshot to disk (⌘⇧3, ⌘⇧4, ⌘⇧5), Multipaste copies it to the clipboard the moment it appears. The file still saves to your Desktop (or wherever you've configured screencapture to save) — this just removes the need to remember to hold ⌃ to get it in the clipboard too."
         self.autoCopyScreenshotsCheckbox = screenshotsCB
 
+        let sepLabel = NSTextField(labelWithString: "Multi-paste separator:")
+        let sepPopup = NSPopUpButton()
+        for choice in MultiPasteSeparatorChoice.allCases {
+            sepPopup.addItem(withTitle: choice.label)
+        }
+        // A literal hand-written via `defaults write` has no popup row;
+        // select nothing rather than lying about what's stored.
+        if let current = MultiPasteSeparatorChoice.from(literal: prefs.multiPasteSeparator),
+           let idx = MultiPasteSeparatorChoice.allCases.firstIndex(of: current) {
+            sepPopup.selectItem(at: idx)
+        } else {
+            sepPopup.select(nil)
+        }
+        sepPopup.target = self
+        sepPopup.action = #selector(multiPasteSeparatorChanged)
+        sepPopup.toolTip = "In the picker, mark several items with ⌥↩ (or ⌘-click), then press ↩ to paste them all. Text items are joined with this separator."
+        self.multiPasteSeparatorPopup = sepPopup
+
+        let sepHint = NSTextField(labelWithString:
+            "Mark items with ⌥↩ in the picker, then ↩ pastes them all, joined by this.")
+        sepHint.font = .systemFont(ofSize: 11)
+        sepHint.textColor = .secondaryLabelColor
+
         let mhLabel = NSTextField(labelWithString: "History size:")
         let mhField = NSTextField()
         mhField.stringValue = "\(prefs.maxHistory)"
@@ -170,6 +194,8 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             row(NSView(), augmentHint),
             row(NSView(), screenshotsCB),
             row(NSView(), screenshotsHint),
+            row(sepLabel, sepPopup),
+            row(NSView(), sepHint),
             row(mhLabel, mhField, mhStepper, mhHint),
         ]
         let stack = NSStackView(views: rows)
@@ -211,6 +237,13 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let on = (autoCopyScreenshotsCheckbox.state == .on)
         prefs.autoCopyScreenshots = on
         onAutoCopyScreenshotsChanged(on)
+    }
+
+    @objc private func multiPasteSeparatorChanged() {
+        let idx = multiPasteSeparatorPopup.indexOfSelectedItem
+        let choices = MultiPasteSeparatorChoice.allCases
+        guard idx >= 0 && idx < choices.count else { return }
+        prefs.multiPasteSeparator = choices[idx].literal
     }
 
     @objc private func toggleLaunchAtLogin() {

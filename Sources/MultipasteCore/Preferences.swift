@@ -52,6 +52,7 @@ public final class Preferences {
             Keys.hotkeyModifiers:          Hotkey.default.modifiers.rawValue,
             Keys.augmentFileCopiesWithPath: true,
             Keys.autoCopyScreenshots:      true,
+            Keys.multiPasteSeparator:      MultiPasteSeparatorChoice.newline.literal,
         ])
     }
 
@@ -121,6 +122,16 @@ public final class Preferences {
         set { defaults.set(newValue, forKey: Keys.autoCopyScreenshots) }
     }
 
+    /// Separator placed between items when a multi-paste combines into
+    /// a single text paste (mark items with ⌥↩ in the picker, then ↩).
+    /// Stored as the literal string so the composer just uses it as-is;
+    /// the Settings popup maps it to `MultiPasteSeparatorChoice`.
+    /// Default: newline, one item per line.
+    public var multiPasteSeparator: String {
+        get { defaults.string(forKey: Keys.multiPasteSeparator) ?? MultiPasteSeparatorChoice.newline.literal }
+        set { defaults.set(newValue, forKey: Keys.multiPasteSeparator) }
+    }
+
     public var hotkey: Hotkey {
         get {
             Hotkey(
@@ -144,5 +155,6 @@ public final class Preferences {
         static let augmentFileCopiesWithPath = "augmentFileCopiesWithPath"
         static let pinnedItemsFirst         = "pinnedItemsFirst"
         static let autoCopyScreenshots      = "autoCopyScreenshots"
+        static let multiPasteSeparator      = "multiPasteSeparator"
     }
 }

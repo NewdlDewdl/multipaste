@@ -9,10 +9,11 @@ reports seriously and want them to land somewhere I'll see them quickly.
 
 | Version  | Supported              |
 | -------- | ---------------------- |
-| `2.2.x`  | ✅ — current release (latest: 2.2.0) |
-| `2.1.x`  | ⚠️ — best-effort       |
-| `2.0.x`  | ⚠️ — best-effort       |
-| `< 2.0`  | ❌ — please upgrade     |
+| `2.3.x`  | ✅ current release (latest: 2.3.0) |
+| `2.2.x`  | ⚠️ best-effort         |
+| `2.1.x`  | ⚠️ best-effort         |
+| `2.0.x`  | ⚠️ best-effort         |
+| `< 2.0`  | ❌ please upgrade       |
 
 Multipaste is a sole-maintainer project (Rohin Agrawal). "Supported" here
 means I will investigate and fix critical security issues; it is not a
