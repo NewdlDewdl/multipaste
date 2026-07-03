@@ -33,8 +33,15 @@ public final class HistoryStore {
     public func insert(_ item: ClipboardItem) {
         var fresh = item
         if let existing = items.first(where: { $0.contentHash == item.contentHash }) {
-            // re-copy of an item we've seen: preserve its pinned state.
+            // re-copy of an item we've seen: preserve its pinned state AND
+            // its snippet trigger. A fresh factory item carries trigger=nil,
+            // so without this a snippet's expansion would silently die the
+            // moment you re-copied its exact body — the item stays pinned but
+            // stops firing (SnippetMatcher needs pinned AND a non-empty
+            // trigger). Only inherit when the incoming item doesn't already
+            // define its own trigger.
             fresh.pinned = existing.pinned
+            if fresh.trigger == nil { fresh.trigger = existing.trigger }
         }
         items.removeAll { $0.contentHash == item.contentHash }
         items.insert(fresh, at: 0)

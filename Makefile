@@ -1,4 +1,4 @@
-.PHONY: all build test smoke-test preview-update-dialog install uninstall purge run clean status logs verify-app
+.PHONY: all build test smoke-test plaintext-smoke-test preview-update-dialog install uninstall purge run clean status logs verify-app
 
 all: build
 
@@ -10,10 +10,19 @@ test:
 # APIs (DispatchSourceFileSystemObject + NSPasteboard) against a
 # temp directory + a private pasteboard — so it doesn't touch the
 # user's real screenshot folder or system clipboard. Complements
-# the 199 unit tests in `make test` (those cover the pure logic;
+# the unit tests in `make test` (those cover the pure logic;
 # this verifies the live integration on the machine).
 smoke-test:
 	@swift scripts/screenshot-smoke-test.swift
+
+# End-to-end integration smoke test of the plain-text-paste feature
+# (⇧↩). Mirrors PlainText.pasteWrite + Paster.put and runs the write
+# against a PRIVATE NSPasteboard, proving a plain-text paste leaves
+# .string and strips the .rtf type on a live pasteboard. The pure
+# per-kind mapping is unit-tested in PlainTextTests; this proves the
+# AppKit write those decisions drive.
+plaintext-smoke-test:
+	@swift scripts/plaintext-paste-smoke-test.swift
 
 # Visual preview of the "vX.Y.Z is available" update dialog —
 # uses the actual v2.0.2 CHANGELOG markdown that produced the bug

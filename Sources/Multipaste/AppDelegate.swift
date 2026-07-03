@@ -18,8 +18,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private lazy var picker = PickerWindow(
         store: store,
         prefs: prefs,
-        onPick: { [weak self] items, previousApp in
-            self?.pickAndPaste(items, previousApp: previousApp)
+        onPick: { [weak self] items, previousApp, flavor in
+            self?.pickAndPaste(items, previousApp: previousApp, flavor: flavor)
         },
         onEditTrigger: { [weak self] item in
             self?.promptForTrigger(item: item)
@@ -330,16 +330,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// ClipboardMonitor's 300 ms poll sees the changeCount bump from
     /// `Paster.put` and inserts it like any other copy, so a merged
     /// multi-paste becomes a single reusable history item for free.
-    private func pickAndPaste(_ items: [ClipboardItem], previousApp: NSRunningApplication?) {
+    private func pickAndPaste(_ items: [ClipboardItem],
+                              previousApp: NSRunningApplication?,
+                              flavor: PasteFlavor = .rich) {
         guard let plan = MultiPasteComposer.plan(items: items,
                                                  separator: prefs.multiPasteSeparator) else { return }
         switch plan {
         case .single(let item):
-            deliver(item, previousApp: previousApp, label: "single")
+            deliver(item, previousApp: previousApp, flavor: flavor, label: "single")
         case .combined(let item):
-            deliver(item, previousApp: previousApp, label: "combined(\(items.count) items)")
+            deliver(item, previousApp: previousApp, flavor: flavor,
+                    label: "combined(\(items.count) items)")
         case .sequential(let sequence):
-            deliverSequentially(sequence, previousApp: previousApp)
+            deliverSequentially(sequence, previousApp: previousApp, flavor: flavor)
         }
     }
 
@@ -357,8 +360,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     ///    before another app's `activate()` is honored), wait for it, paste.
     ///  - `.clipboardOnly` — we're frontmost with no known target: don't
     ///    paste into ourselves; the item is on the clipboard for a manual ⌘V.
-    private func deliver(_ item: ClipboardItem, previousApp: NSRunningApplication?, label: String) {
-        Paster.put(item)
+    private func deliver(_ item: ClipboardItem, previousApp: NSRunningApplication?,
+                         flavor: PasteFlavor, label: String) {
+        Paster.put(item, flavor: flavor)
         routeAndPaste(previousApp: previousApp, label: label) {
             Paster.simulateCommandV()
         }
@@ -369,11 +373,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// front so even a guard-bail leaves something useful on the
     /// clipboard; on `.clipboardOnly` we stop there; synthesizing a
     /// burst of ⌘V with no target would paste into Multipaste itself.
-    private func deliverSequentially(_ items: [ClipboardItem], previousApp: NSRunningApplication?) {
+    private func deliverSequentially(_ items: [ClipboardItem], previousApp: NSRunningApplication?,
+                                     flavor: PasteFlavor) {
         guard let first = items.first else { return }
-        Paster.put(first)
+        Paster.put(first, flavor: flavor)
         routeAndPaste(previousApp: previousApp, label: "sequential(\(items.count) items)") { [weak self] in
-            self?.pasteSequentially(items, index: 0)
+            self?.pasteSequentially(items, index: 0, flavor: flavor)
         }
     }
 
@@ -434,18 +439,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// their event queue; swapping sooner would feed item N+1's bytes
     /// into paste N), recurse. The last item naturally stays on the
     /// clipboard, matching single-paste semantics.
-    private func pasteSequentially(_ items: [ClipboardItem], index: Int) {
+    private func pasteSequentially(_ items: [ClipboardItem], index: Int, flavor: PasteFlavor) {
         guard index < items.count else {
             Diagnostics.log("pickAndPaste[sequential]: complete (\(items.count) items)")
             return
         }
-        Paster.put(items[index])
+        Paster.put(items[index], flavor: flavor)
         DispatchQueue.main.asyncAfter(deadline: .now() + Self.pasteSettle) { [weak self] in
             Paster.simulateCommandV()
             DispatchQueue.main.asyncAfter(
                 deadline: .now() + MultiPasteComposer.sequentialInterItemDelay
             ) {
-                self?.pasteSequentially(items, index: index + 1)
+                self?.pasteSequentially(items, index: index + 1, flavor: flavor)
             }
         }
     }

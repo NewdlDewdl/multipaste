@@ -1,5 +1,99 @@
 # Changelog
 
+## 2.4.0 (2026-07-03)
+
+**Paste as plain text: press `⇧↩` in the picker and the item pastes with
+all formatting stripped. Also fixes a bug where re-copying a snippet's
+text silently killed the snippet.**
+
+A rich clip from a webpage, Word, or Notion used to drag its fonts,
+colors, and sizes into wherever you pasted it, with no keyboard escape.
+Now `⇧↩` on any item pastes the clean, unstyled text. Bold, links,
+background colors, mismatched fonts: gone. Everything else about the pick
+is unchanged (it still routes into whatever app you were in, still
+respects marks for multi-paste).
+
+Prefer plain by default? **Preferences → General → "Paste as plain text
+by default"** flips it: a bare `↩` pastes plain and `⇧↩` pastes the rich
+original. Either way, both flavors are one keystroke apart. Off by
+default, so existing muscle memory (`↩` = paste what I copied, formatting
+and all) is unchanged.
+
+### How it works
+
+The decision — which pasteboard types to declare and what bytes they
+carry — is a pure, unit-tested policy in `MultipasteCore`, so the app
+layer just executes it:
+
+- **`PlainText.pasteWrite(for:flavor:)`** returns a `PasteWrite` value
+  (`.string` / `.richText` / `.image` / `.fileURLs`) describing exactly
+  what goes on the pasteboard. Rich text in `.plainText` resolves to
+  `.string` (plain only) — the `.rtf` type is gone — so "strips
+  formatting" is provable, not hand-waved. A file copy pastes its path
+  text; an image (which has no plain form) falls back to the rich image
+  write, so `⇧↩` on an image still pastes the image rather than nothing.
+- **`Paster.put(_:flavor:to:)`** is now a thin executor over that value;
+  its rich path is byte-for-byte the pre-2.4.0 behavior, so every
+  existing caller (snippet expansion, menu quick-pick, ⌘1-9) is
+  unaffected. The pasteboard is injectable so a smoke test can assert the
+  write against a private pasteboard.
+- **`PickerWindow`** computes the effective flavor per pick
+  (`effectiveFlavor`: the user's default, inverted by Shift) and threads
+  it through the whole delivery chain — `deliver`, `deliverSequentially`,
+  and `pasteSequentially` — so even an image-in-the-mix `⇧↩` honors it.
+- `MultiPasteComposer.textRepresentation` now forwards to
+  `PlainText.string`, so the multi-paste text join and plain-text paste
+  share one definition of "the plain text of an item" and can never
+  drift (a test asserts they agree).
+
+### Also fixed: re-copying a snippet's text killed the snippet
+
+`HistoryStore.insert` preserved a re-copied item's **pinned** state but
+not its **trigger**. Since a fresh copy carries `trigger = nil` and
+`SnippetMatcher` only fires on a pinned item with a non-empty trigger,
+re-copying a snippet's exact body left a pinned-but-dead item that
+silently stopped expanding. Insert now inherits the existing trigger on a
+re-copy (only when the incoming item doesn't define its own), the same
+way it already inherits `pinned`.
+
+### What changed
+
+- **`Sources/MultipasteCore/PasteFlavor.swift`** (new): `PasteFlavor`
+  (`rich` / `plainText`), `PasteWrite` (the pure pasteboard-write
+  description), and `PlainText` (`string(for:)` + `pasteWrite(for:flavor:)`).
+- **`Sources/MultipasteCore/MultiPasteComposer.swift`**:
+  `textRepresentation` is now a thin forwarder to `PlainText.string`
+  (one source of truth; behavior-preserving).
+- **`Sources/MultipasteCore/Preferences.swift`**: `plainTextPasteDefault`
+  (Bool, default false).
+- **`Sources/MultipasteCore/HistoryStore.swift`**: `insert` inherits the
+  existing snippet trigger on a re-copy.
+- **`Sources/Multipaste/Paster.swift`**: `put(_:flavor:to:)` executes a
+  `PasteWrite`; injectable pasteboard.
+- **`Sources/Multipaste/PickerWindow.swift`**: `⇧↩` (and ⇧-double-click)
+  paste plain; `effectiveFlavor`; `onPick` carries the flavor; hint bar
+  shows `⇧↩ plain text`.
+- **`Sources/Multipaste/AppDelegate.swift`**: the flavor threads through
+  `pickAndPaste` → `deliver` / `deliverSequentially` / `pasteSequentially`.
+- **`Sources/Multipaste/SettingsWindowController.swift`**: "Paste as
+  plain text by default" checkbox in the General tab.
+- **`scripts/plaintext-paste-smoke-test.swift`** (new) + `make
+  plaintext-smoke-test`: proves on a live `NSPasteboard` that a
+  plain-text paste keeps `.string` and drops `.rtf`.
+- **Tests**: 17 new (13 `PlainText`, 2 `HistoryStore` trigger-preservation,
+  2 `Preferences`); **288 total**.
+- **`Sources/MultipasteCore/Version.swift`** / **`Resources/Info.plist`**:
+  2.3.0 → 2.4.0 (`CFBundleVersion` 23 → 24).
+- **`README.md`** / **`SECURITY.md`**: plain-text paste documented; test
+  count 271 → 288; current release 2.4.0.
+
+### Compatibility
+
+Drop-in. `plainTextPasteDefault` ships **off**, so `↩` behaves exactly as
+before and plain text is opt-in via `⇧↩`. No data, migration, or existing
+preference changes. The `Paster.put` rich path is unchanged, so snippet
+expansion and every non-plain paste are byte-for-byte identical.
+
 ## 2.3.0 (2026-06-10)
 
 **Mark several history items, press Return once, and they all paste:

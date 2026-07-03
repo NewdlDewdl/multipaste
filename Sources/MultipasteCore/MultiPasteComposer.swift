@@ -58,17 +58,12 @@ public enum MultiPasteComposer {
     /// injects for single file copies, so a file mixed into a text
     /// multi-paste behaves consistently with pasting it alone into a
     /// text editor.
+    ///
+    /// Forwards to `PlainText.string(for:)` so the "plain text of an item"
+    /// rule has exactly one definition, shared with the plain-text-paste
+    /// feature (⇧↩). A `PlainTextTests` case asserts the two never diverge.
     public static func textRepresentation(of item: ClipboardItem) -> String? {
-        switch item.kind {
-        case .text(let s):
-            return s
-        case .rtf(_, let plain):
-            return plain
-        case .fileURLs(let urls):
-            return PasteboardAugmenter.pathText(forFiles: urls)
-        case .image:
-            return nil
-        }
+        PlainText.string(for: item)
     }
 
     /// Decide how to paste `items` (in the given order). `separator`

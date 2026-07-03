@@ -35,6 +35,8 @@ enum HistoryStoreTests {
         TestRegistry.register("HistoryStore/unpinDoesNotReorderOtherItems", unpinDoesNotReorderOtherItems)
         TestRegistry.register("HistoryStore/searchResultsAreAlwaysPinnedFirst", searchResultsAreAlwaysPinnedFirst)
         TestRegistry.register("HistoryStore/itemsStaysChronologicalEvenWhenSortedHoists", itemsStaysChronologicalEvenWhenSortedHoists)
+        TestRegistry.register("HistoryStore/reCopyPreservesSnippetTrigger", reCopyPreservesSnippetTrigger)
+        TestRegistry.register("HistoryStore/reCopyKeepsIncomingTriggerOverExisting", reCopyKeepsIncomingTriggerOverExisting)
     }
 
     private static func makeStore(max: Int = 50) -> (HistoryStore, URL) {
@@ -64,6 +66,39 @@ enum HistoryStoreTests {
         try expectEqual(store.items[0].preview, "a", "duplicate should resurface to top")
         try expectEqual(store.items[1].preview, "c")
         try expectEqual(store.items[2].preview, "b")
+    }
+
+    /// Regression guard for the silent-snippet-death bug: re-copying a
+    /// snippet's exact body used to drop its trigger (insert preserved
+    /// `pinned` but not `trigger`, and a fresh factory item has
+    /// `trigger == nil`), leaving a pinned-but-dead item that no longer
+    /// expands. The resurfaced item must keep both its pin and its trigger.
+    static func reCopyPreservesSnippetTrigger() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("you@example.com"))
+        store.setTrigger(id: store.items[0].id, trigger: ";e") // auto-pins
+        try expect(store.items[0].pinned)
+        try expectEqual(store.items[0].trigger, ";e")
+
+        // User copies the same address again from somewhere else.
+        store.insert(.text("you@example.com"))
+        try expectEqual(store.items.count, 1, "same content dedups, not duplicates")
+        try expectEqual(store.items[0].trigger, ";e", "the snippet trigger must survive the re-copy")
+        try expect(store.items[0].pinned, "and it must stay pinned so SnippetMatcher still fires it")
+    }
+
+    /// If the incoming item already carries its own trigger, that wins — the
+    /// inheritance only fills a `nil` trigger. (Guards the `fresh.trigger ==
+    /// nil` condition so it can't silently become an unconditional overwrite.)
+    static func reCopyKeepsIncomingTriggerOverExisting() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("body"))
+        store.setTrigger(id: store.items[0].id, trigger: ";old")
+
+        var incoming = ClipboardItem.text("body")
+        incoming.trigger = ";new"
+        store.insert(incoming)
+        try expectEqual(store.items[0].trigger, ";new", "an explicit incoming trigger wins over the inherited one")
     }
 
     static func maxItemsEvictsOldestUnpinned() throws {

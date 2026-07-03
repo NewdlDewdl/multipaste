@@ -89,6 +89,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     private var hotkeyField: HotkeyRecorderField!
     private var pasteOnSelectCheckbox: NSButton!
+    private var plainTextPasteCheckbox: NSButton!
     private var launchAtLoginCheckbox: NSButton!
     private var augmentFileCopiesCheckbox: NSButton!
     private var autoCopyScreenshotsCheckbox: NSButton!
@@ -115,6 +116,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
                                target: self, action: #selector(togglePasteOnSelect))
         pasteCB.state = prefs.pasteOnSelect ? .on : .off
         self.pasteOnSelectCheckbox = pasteCB
+
+        let plainCB = NSButton(checkboxWithTitle: "Paste as plain text by default",
+                               target: self, action: #selector(togglePlainTextPasteDefault))
+        plainCB.state = prefs.plainTextPasteDefault ? .on : .off
+        plainCB.toolTip = "When on, ↩ in the picker strips formatting (paste plain text) and ⇧↩ pastes the rich original. When off (default), ↩ pastes rich and ⇧↩ pastes plain text. Either way, plain text is one keystroke away."
+        self.plainTextPasteCheckbox = plainCB
 
         let launchCB = NSButton(checkboxWithTitle: "Start Multipaste at login",
                                 target: self, action: #selector(toggleLaunchAtLogin))
@@ -186,9 +193,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         screenshotsHint.font = .systemFont(ofSize: 11)
         screenshotsHint.textColor = .secondaryLabelColor
 
+        let plainHint = NSTextField(labelWithString:
+            "⇧↩ in the picker always pastes the opposite flavor of this default.")
+        plainHint.font = .systemFont(ofSize: 11)
+        plainHint.textColor = .secondaryLabelColor
+
         let rows: [NSView] = [
             row(hkLabel, hkField, hkHint),
             row(NSView(), pasteCB),
+            row(NSView(), plainCB),
+            row(NSView(), plainHint),
             row(NSView(), launchCB),
             row(NSView(), augmentCB),
             row(NSView(), augmentHint),
@@ -227,6 +241,12 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     @objc private func togglePasteOnSelect() {
         prefs.pasteOnSelect = (pasteOnSelectCheckbox.state == .on)
+    }
+
+    @objc private func togglePlainTextPasteDefault() {
+        // The picker reads prefs.plainTextPasteDefault live on every pick,
+        // so there's nothing to bounce — the next ↩ already honors this.
+        prefs.plainTextPasteDefault = (plainTextPasteCheckbox.state == .on)
     }
 
     @objc private func toggleAugmentFileCopies() {
