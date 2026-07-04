@@ -120,7 +120,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         let plainCB = NSButton(checkboxWithTitle: "Paste as plain text by default",
                                target: self, action: #selector(togglePlainTextPasteDefault))
         plainCB.state = prefs.plainTextPasteDefault ? .on : .off
-        plainCB.toolTip = "When on, ↩ in the picker strips formatting (paste plain text) and ⇧↩ pastes the rich original. When off (default), ↩ pastes rich and ⇧↩ pastes plain text. Either way, plain text is one keystroke away."
+        plainCB.toolTip = "When on, ↩ in the picker strips formatting (paste plain text) and ⇧↩ pastes the rich original. When off (default), ↩ pastes rich and ⇧↩ pastes plain text. Either way, plain text is one keystroke away. The picker's ⌘1–9 and the menu-bar Recent quick-pick follow this default too."
         self.plainTextPasteCheckbox = plainCB
 
         let launchCB = NSButton(checkboxWithTitle: "Start Multipaste at login",

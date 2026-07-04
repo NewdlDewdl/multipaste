@@ -21,6 +21,9 @@
 //   3. PLAIN text write yields the string verbatim.
 //   4. PLAIN image falls back to the rich image write (.png present),
 //      so ⇧↩ on an image still pastes the image rather than nothing.
+//   5. PLAIN empty-plain rtf (an {\rtf1\ansi} stub parses to "") falls
+//      back to the rich write instead of clobbering the clipboard with
+//      an empty string (v2.4.0-review regression guard).
 //
 // The pure per-kind mapping itself (which flavor → which PasteWrite) is
 // separately unit-tested in Tests/MultipasteCoreTests/PlainTextTests.swift
@@ -84,7 +87,10 @@ func pasteWrite(for kind: Kind, flavor: Flavor) -> PasteWrite {
     case .rich:
         return richWrite(for: kind)
     case .plainText:
-        if let plain = plainString(for: kind) { return .string(plain) }
+        // Mirrors the real policy exactly: an EMPTY plain form (empty-plain
+        // RTF) falls back to the rich write, same as an image with no plain
+        // form — writing .string("") would clobber the clipboard with nothing.
+        if let plain = plainString(for: kind), !plain.isEmpty { return .string(plain) }
         return richWrite(for: kind)
     }
 }
@@ -141,6 +147,18 @@ execute(pasteWrite(for: .image(png: pngMagic), flavor: .plainText), to: pb)
 guard pb.data(forType: .png) == pngMagic else { die("plain image did NOT fall back to pasting the image") }
 ok("plain image → falls back to .png (⇧↩ on an image still pastes the image)")
 
+step("5. PLAIN empty-plain rtf falls back to the rich write (no clipboard clobber)")
+// An RTF stub like {\rtf1\ansi} parses to an empty string, and the capture
+// side only guards emptiness for plain-text items — so this state is real.
+// Pre-review, pasting it plain wrote .string(""): clipboard cleared, nothing
+// pasted. Now it must fall back to the rich rtf write.
+let emptyStub = Data("{\\rtf1\\ansi}".utf8)
+execute(pasteWrite(for: .rtf(rtf: emptyStub, plain: ""), flavor: .plainText), to: pb)
+guard pb.data(forType: .rtf) == emptyStub else {
+    die("empty-plain rtf pasted plain did NOT fall back to the rich write — the clipboard was clobbered with nothing")
+}
+ok("plain empty-rtf → falls back to .rtf (destructive-no-op guard)")
+
 pb.releaseGlobally()
-print("\n\u{001B}[32m✓\u{001B}[0m plain-text-paste smoke test passed (4 checks, real NSPasteboard)")
+print("\n\u{001B}[32m✓\u{001B}[0m plain-text-paste smoke test passed (5 checks, real NSPasteboard)")
 exit(0)

@@ -54,7 +54,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         prefs: prefs,
         initialAccessibilityGranted: Permissions.isTrustedForAccessibility,
         onShowPicker: { [weak self] in self?.picker.show() },
-        onPasteItem:  { [weak self] item in self?.pickAndPaste([item], previousApp: nil) },
+        onPasteItem:  { [weak self] item in
+            guard let self else { return }
+            // The menu-bar quick-pick honors "Paste as plain text by
+            // default" the same way ⌘1-9 in the picker does (base flavor,
+            // no Shift inversion — a menu click has no ⇧↩ affordance).
+            self.pickAndPaste([item], previousApp: nil,
+                              flavor: PasteFlavor.effective(
+                                plainTextPasteDefault: self.prefs.plainTextPasteDefault,
+                                shiftPressed: false))
+        },
         onShowSettings: { [weak self] in self?.settings.show() },
         onCheckForUpdates: { [weak self] in self?.updateService.checkNow() },
         onGrantAccessibility: { [weak self] in self?.walkThroughAccessibilityGrant() },
@@ -332,7 +341,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     /// multi-paste becomes a single reusable history item for free.
     private func pickAndPaste(_ items: [ClipboardItem],
                               previousApp: NSRunningApplication?,
-                              flavor: PasteFlavor = .rich) {
+                              flavor: PasteFlavor) {
         guard let plan = MultiPasteComposer.plan(items: items,
                                                  separator: prefs.multiPasteSeparator) else { return }
         switch plan {

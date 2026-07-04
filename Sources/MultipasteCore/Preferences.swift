@@ -136,11 +136,16 @@ public final class Preferences {
     /// When true, a bare `↩` in the picker pastes the item as **plain
     /// text** (formatting stripped) and `⇧↩` pastes it rich — i.e. the
     /// default flips and Shift inverts. When false (the default, matching
-    /// pre-v2.4.0 behavior), `↩` pastes rich and `⇧↩` pastes plain.
+    /// pre-v2.4.0 behavior), `↩` pastes rich and `⇧↩` pastes plain. The
+    /// picker's `⌘1–9` quick-pick and the menu-bar Recent quick-pick use
+    /// the base flavor this preference selects (no Shift inversion there).
+    /// Snippet expansion always pastes rich — a snippet's formatting is
+    /// part of what the user saved.
     ///
     /// Off by default so existing users' muscle memory (`↩` = paste what I
     /// copied, formatting and all) is unchanged; plain text is always one
-    /// `⇧↩` away regardless of this setting.
+    /// `⇧↩` away regardless of this setting. The flavor resolution itself
+    /// is `PasteFlavor.effective(plainTextPasteDefault:shiftPressed:)`.
     public var plainTextPasteDefault: Bool {
         get { defaults.bool(forKey: Keys.plainTextPasteDefault) }
         set { defaults.set(newValue, forKey: Keys.plainTextPasteDefault) }

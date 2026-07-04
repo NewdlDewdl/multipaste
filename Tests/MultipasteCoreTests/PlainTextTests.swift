@@ -27,6 +27,13 @@ enum PlainTextTests {
         TestRegistry.register("PlainText/pasteWritePlainFilesIsPathText", pasteWritePlainFilesIsPathText)
         TestRegistry.register("PlainText/pasteWriteRichImageIsImage", pasteWriteRichImageIsImage)
         TestRegistry.register("PlainText/pasteWritePlainImageFallsBackToImage", pasteWritePlainImageFallsBackToImage)
+        TestRegistry.register("PlainText/pasteWritePlainEmptyRtfFallsBackToRich", pasteWritePlainEmptyRtfFallsBackToRich)
+        TestRegistry.register("PlainText/pasteWritePlainWhitespaceRtfStaysString", pasteWritePlainWhitespaceRtfStaysString)
+        TestRegistry.register("PlainText/pasteWritePlainEmptyTextIsEmptyString", pasteWritePlainEmptyTextIsEmptyString)
+        TestRegistry.register("PlainText/effectiveFlavorPrefOffNoShiftIsRich", effectiveFlavorPrefOffNoShiftIsRich)
+        TestRegistry.register("PlainText/effectiveFlavorPrefOffShiftIsPlain", effectiveFlavorPrefOffShiftIsPlain)
+        TestRegistry.register("PlainText/effectiveFlavorPrefOnNoShiftIsPlain", effectiveFlavorPrefOnNoShiftIsPlain)
+        TestRegistry.register("PlainText/effectiveFlavorPrefOnShiftIsRich", effectiveFlavorPrefOnShiftIsRich)
     }
 
     // MARK: - Fixtures
@@ -131,5 +138,65 @@ enum PlainTextTests {
     static func pasteWritePlainImageFallsBackToImage() throws {
         try expectEqual(PlainText.pasteWrite(for: .image(pngData: pngBytes, width: 4, height: 4), flavor: .plainText),
                         .image(png: pngBytes))
+    }
+
+    /// Regression guard (found in the v2.4.0 adversarial review): an RTF
+    /// item whose parsed plain text is EMPTY is capturable — an RTF stub
+    /// like `{\rtf1\ansi}` parses to "", and `ClipboardMonitor.snapshot`
+    /// only guards emptiness on the plain-text branch. Pasting it plain
+    /// used to resolve to `.string("")`, which clears the clipboard and
+    /// pastes nothing (a destructive no-op). It must fall back to the rich
+    /// write, like an image does.
+    static func pasteWritePlainEmptyRtfFallsBackToRich() throws {
+        let item = rtfItem(plain: "")
+        try expectEqual(PlainText.pasteWrite(for: item, flavor: .plainText),
+                        .richText(rtf: rtfBytes, plain: ""),
+                        "empty-plain RTF pasted plain must fall back to the rich write, not clobber the clipboard with \"\"")
+    }
+
+    /// Guards the guard: the empty-plain fallback must trigger ONLY on
+    /// strictly-empty plain text. Whitespace-only plain text (spaces,
+    /// newlines) is a legitimate plain paste and stays `.string`.
+    static func pasteWritePlainWhitespaceRtfStaysString() throws {
+        let item = rtfItem(plain: " \n\t ")
+        try expectEqual(PlainText.pasteWrite(for: item, flavor: .plainText),
+                        .string(" \n\t "),
+                        "whitespace-only plain text is not empty; it must still paste plain")
+    }
+
+    /// For a plain-TEXT item the fallback is invisible: the rich write of
+    /// `.text("")` is `.string("")` too, so both flavors agree. This pins
+    /// that the fallback never changes behavior for text items.
+    static func pasteWritePlainEmptyTextIsEmptyString() throws {
+        try expectEqual(PlainText.pasteWrite(for: .text(""), flavor: .plainText),
+                        PlainText.pasteWrite(for: .text(""), flavor: .rich))
+        try expectEqual(PlainText.pasteWrite(for: .text(""), flavor: .plainText), .string(""))
+    }
+
+    // MARK: - PasteFlavor.effective(plainTextPasteDefault:shiftPressed:)
+    //
+    // The full pref × Shift decision table. This used to live untested in
+    // AppKit `PickerWindow`; it was extracted here in the v2.4.0 review so
+    // every combination is locked. Both the picker and the menu-bar
+    // quick-pick forward to this one definition.
+
+    static func effectiveFlavorPrefOffNoShiftIsRich() throws {
+        try expectEqual(PasteFlavor.effective(plainTextPasteDefault: false, shiftPressed: false), .rich,
+                        "shipped default: bare ↩ pastes rich")
+    }
+
+    static func effectiveFlavorPrefOffShiftIsPlain() throws {
+        try expectEqual(PasteFlavor.effective(plainTextPasteDefault: false, shiftPressed: true), .plainText,
+                        "shipped default: ⇧↩ pastes plain text")
+    }
+
+    static func effectiveFlavorPrefOnNoShiftIsPlain() throws {
+        try expectEqual(PasteFlavor.effective(plainTextPasteDefault: true, shiftPressed: false), .plainText,
+                        "pref on: bare ↩ pastes plain text")
+    }
+
+    static func effectiveFlavorPrefOnShiftIsRich() throws {
+        try expectEqual(PasteFlavor.effective(plainTextPasteDefault: true, shiftPressed: true), .rich,
+                        "pref on: ⇧↩ pastes the rich original")
     }
 }

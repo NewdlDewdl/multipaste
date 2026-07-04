@@ -18,7 +18,6 @@ public final class HistoryStore {
     private let directory: URL
     private let fileURL: URL
     private let maxItems: Int
-    private let queue = DispatchQueue(label: "com.rohin.multipaste.HistoryStore")
     private var observers: [UUID: ([ClipboardItem]) -> Void] = [:]
 
     public init(directory: URL, maxItems: Int) {

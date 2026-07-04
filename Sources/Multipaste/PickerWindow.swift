@@ -412,14 +412,13 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         return false
     }
 
-    /// The paste flavor for a pick. The base is the user's default
-    /// (`plainTextPasteDefault`); Shift inverts it. So with the default OFF
-    /// (shipped), `↩` pastes rich and `⇧↩` pastes plain text; with it ON,
-    /// `↩` pastes plain and `⇧↩` pastes rich. Symmetric either way.
+    /// The paste flavor for a pick. Thin forwarder to the pure, unit-tested
+    /// `PasteFlavor.effective` policy (base = the user's default, `⇧`
+    /// inverts) — the decision itself lives in `MultipasteCore` so all four
+    /// pref × Shift combinations are locked by tests.
     private func effectiveFlavor(shiftPressed: Bool) -> PasteFlavor {
-        let base: PasteFlavor = prefs.plainTextPasteDefault ? .plainText : .rich
-        guard shiftPressed else { return base }
-        return base == .plainText ? .rich : .plainText
+        PasteFlavor.effective(plainTextPasteDefault: prefs.plainTextPasteDefault,
+                              shiftPressed: shiftPressed)
     }
 
     /// Double-click on a row. Honors a held Shift as the plain/rich inverter,

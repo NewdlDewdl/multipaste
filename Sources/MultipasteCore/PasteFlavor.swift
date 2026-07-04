@@ -19,6 +19,24 @@ import Foundation
 public enum PasteFlavor: Sendable, Equatable {
     case rich
     case plainText
+
+    /// The flavor a pick should use, resolved from the user's
+    /// `plainTextPasteDefault` preference and whether `⇧` is held.
+    ///
+    /// The base is the preference (`false` → `.rich`, `true` → `.plainText`);
+    /// Shift inverts it. So with the shipped default (pref off), `↩` pastes
+    /// rich and `⇧↩` pastes plain text; with the pref on, `↩` pastes plain
+    /// and `⇧↩` pastes the rich original. Symmetric either way — the other
+    /// flavor is always exactly one `⇧` away.
+    ///
+    /// Lives here (not in the picker) so the decision is pure and
+    /// unit-tested; `PickerWindow` and the menu-bar quick-pick both forward
+    /// to this one definition.
+    public static func effective(plainTextPasteDefault: Bool, shiftPressed: Bool) -> PasteFlavor {
+        let base: PasteFlavor = plainTextPasteDefault ? .plainText : .rich
+        guard shiftPressed else { return base }
+        return base == .plainText ? .rich : .plainText
+    }
 }
 
 /// A fully-resolved description of what to write onto the pasteboard for a
@@ -81,17 +99,24 @@ public enum PlainText {
     /// rich text drops its `.rtf`, a file copy becomes its path text. An
     /// image has no plain form, so `.plainText` on an image falls back to the
     /// rich `.image` write — a `⇧↩` on an image still pastes the image rather
-    /// than silently pasting nothing.
+    /// than silently pasting nothing. The same fallback applies when the
+    /// plain form is EMPTY: an RTF item whose parsed text is "" is capturable
+    /// (`ClipboardMonitor` only guards emptiness for plain-text captures), and
+    /// writing `.string("")` would clobber the clipboard with nothing and
+    /// paste nothing. Whitespace-only plain text is NOT empty — pasting
+    /// spaces or newlines plain is legitimate and stays `.string`.
     public static func pasteWrite(for item: ClipboardItem, flavor: PasteFlavor) -> PasteWrite {
         switch flavor {
         case .rich:
             return richWrite(for: item)
         case .plainText:
-            if let plain = string(for: item) {
+            if let plain = string(for: item), !plain.isEmpty {
                 return .string(plain)
             }
-            // No plain-text form (image): fall back to the rich write so the
-            // paste isn't a no-op.
+            // No plain-text form (image), or an empty one (empty-plain RTF):
+            // fall back to the rich write so the paste isn't a destructive
+            // no-op. (For `.text("")` the rich write is `.string("")` anyway,
+            // so this changes nothing for plain-text items.)
             return richWrite(for: item)
         }
     }
