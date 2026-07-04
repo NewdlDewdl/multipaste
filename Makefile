@@ -1,4 +1,4 @@
-.PHONY: all build test smoke-test preview-update-dialog install uninstall purge run clean status logs verify-app
+.PHONY: all build test smoke-test plaintext-smoke-test preview-update-dialog install uninstall purge run clean status logs verify-app
 
 all: build
 
@@ -10,10 +10,24 @@ test:
 # APIs (DispatchSourceFileSystemObject + NSPasteboard) against a
 # temp directory + a private pasteboard — so it doesn't touch the
 # user's real screenshot folder or system clipboard. Complements
-# the 199 unit tests in `make test` (those cover the pure logic;
+# the unit tests in `make test` (those cover the pure logic;
 # this verifies the live integration on the machine).
 smoke-test:
 	@swift scripts/screenshot-smoke-test.swift
+
+# End-to-end integration smoke test of the plain-text-paste feature
+# (⇧↩), in two layers, both against PRIVATE NSPasteboards (the user's
+# clipboard is never touched):
+#  1. scripts/plaintext-paste-smoke-test.swift: a dependency-free mirror
+#     of the policy + executor (a `swift file.swift` script can't import
+#     the package), proving the write behavior on a live pasteboard.
+#  2. `Multipaste --paste-smoke` (PasteSmokeCheck.swift): the SHIPPED
+#     Paster.put executor itself, so a mutation to the real executor
+#     fails this gate even though unit tests never compile it.
+plaintext-smoke-test:
+	@swift scripts/plaintext-paste-smoke-test.swift
+	@swift build -c debug 2>/dev/null >/dev/null
+	@.build/debug/Multipaste --paste-smoke
 
 # Visual preview of the "vX.Y.Z is available" update dialog —
 # uses the actual v2.0.2 CHANGELOG markdown that produced the bug

@@ -16,24 +16,39 @@ enum Paster {
     /// `HotKeyManager`'s Carbon signature.
     static let synthMarker: Int64 = 0x4D505354
 
-    /// Replace pasteboard contents with `item`'s data. Preserves the
-    /// richest representation (RTF for rich text, multiple URLs for files,
-    /// raw PNG bytes for images).
-    static func put(_ item: ClipboardItem) {
-        let pb = NSPasteboard.general
-        pb.clearContents()
-        switch item.kind {
-        case .text(let s):
-            pb.setString(s, forType: .string)
-        case .rtf(let rtf, let plain):
-            pb.declareTypes([.rtf, .string], owner: nil)
-            pb.setData(rtf, forType: .rtf)
-            pb.setString(plain, forType: .string)
-        case .image(let png, _, _):
-            pb.declareTypes([.png, .tiff], owner: nil)
-            pb.setData(png, forType: .png)
+    /// Replace pasteboard contents with `item`'s data in the requested
+    /// `flavor`.
+    ///
+    /// - `.rich` (default) preserves the richest representation: RTF for rich
+    ///   text, multiple URLs for files, raw PNG bytes for images. Byte-for-byte
+    ///   the pre-v2.4.0 behavior; every existing caller is unaffected.
+    /// - `.plainText` strips formatting: rich text drops its `.rtf` and
+    ///   pastes only the plain string; a file copy pastes its path text; an
+    ///   image (which has no plain form) falls back to the rich image write.
+    ///
+    /// The *decision* (which pasteboard types to declare and what bytes they
+    /// carry) lives in the pure, unit-tested `PlainText.pasteWrite`; this
+    /// method is just the `NSPasteboard` executor. `pasteboard` is injectable
+    /// so the `--paste-smoke` self-check (`PasteSmokeCheck`, run by
+    /// `make plaintext-smoke-test`) can assert THIS method's writes against
+    /// a private pasteboard; that's the executor's direct coverage, since
+    /// unit tests can't import the executable target.
+    static func put(_ item: ClipboardItem,
+                    flavor: PasteFlavor = .rich,
+                    to pasteboard: NSPasteboard = .general) {
+        pasteboard.clearContents()
+        switch PlainText.pasteWrite(for: item, flavor: flavor) {
+        case .string(let s):
+            pasteboard.setString(s, forType: .string)
+        case .richText(let rtf, let plain):
+            pasteboard.declareTypes([.rtf, .string], owner: nil)
+            pasteboard.setData(rtf, forType: .rtf)
+            pasteboard.setString(plain, forType: .string)
+        case .image(let png):
+            pasteboard.declareTypes([.png, .tiff], owner: nil)
+            pasteboard.setData(png, forType: .png)
         case .fileURLs(let urls):
-            pb.writeObjects(urls.map { $0 as NSURL })
+            pasteboard.writeObjects(urls.map { $0 as NSURL })
         }
     }
 

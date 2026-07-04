@@ -15,9 +15,10 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private let store: HistoryStore
     private let prefs: Preferences
     /// Called with the picked items IN PASTE ORDER (a single-element
-    /// array for the classic one-item pick; mark order for multi-pastes)
-    /// plus the app to paste into.
-    private let onPick: ([ClipboardItem], NSRunningApplication?) -> Void
+    /// array for the classic one-item pick; mark order for multi-pastes),
+    /// the app to paste into, and the paste flavor (rich vs plain text; see
+    /// `effectiveFlavor`).
+    private let onPick: ([ClipboardItem], NSRunningApplication?, PasteFlavor) -> Void
     private let onEditTrigger: (ClipboardItem) -> Void
 
     /// The app that was frontmost when the picker opened. We re-activate
@@ -48,7 +49,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
 
     init(store: HistoryStore,
          prefs: Preferences,
-         onPick: @escaping ([ClipboardItem], NSRunningApplication?) -> Void,
+         onPick: @escaping ([ClipboardItem], NSRunningApplication?, PasteFlavor) -> Void,
          onEditTrigger: @escaping (ClipboardItem) -> Void) {
         self.store = store
         self.prefs = prefs
@@ -291,7 +292,14 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     /// unpin / delete so the user sees an immediate "yes, I did that"
     /// signal even when the row's visual change isn't dramatic.
     private var hintRestoreTimer: Timer?
-    private let defaultHintText = "↑↓ select   ↩ paste   ⌥↩ mark   ⌘1–9 quick-pick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close"
+    /// Computed (not stored) so the `↩`/`⇧↩` fragment follows the
+    /// plain-text-paste preference; the pure mapping is
+    /// `PasteFlavor.hintKeyLegend`. Re-read on every `updateMarkHint()`,
+    /// which `show()` triggers, so toggling the pref in Settings is
+    /// reflected the next time the picker opens.
+    private var defaultHintText: String {
+        "↑↓ select   \(PasteFlavor.hintKeyLegend(plainTextPasteDefault: prefs.plainTextPasteDefault))   ⌥↩ mark   ⌘1–9 quick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close"
+    }
 
     private func flashHint(_ message: String, duration: TimeInterval = 1.6) {
         hintLabel.stringValue = message
@@ -354,11 +362,11 @@ final class PickerWindow: NSObject, NSWindowDelegate,
                 hide()
             }
             return true
-        case 36, 76: // return / enter (⌥↩ = mark + step down)
+        case 36, 76: // return / enter (⌥↩ = mark + step down, ⇧↩ = paste plain text)
             if isOption {
                 toggleMarkOnSelection(advance: true)
             } else {
-                commitSelection()
+                commit(flavor: effectiveFlavor(shiftPressed: isShift))
             }
             return true
         case 48: // tab
@@ -388,7 +396,9 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         if isCmd, let digit = Int(chars), digit >= 1 && digit <= 9 {
             let idx = digit - 1
             if idx < filtered.count {
-                commitItems([filtered[idx]])
+                // ⌘1-9 quick-pick pastes in the user's default flavor;
+                // Shift is reserved for the ⇧↩ path.
+                commitItems([filtered[idx]], flavor: effectiveFlavor(shiftPressed: false))
             }
             return true
         }
@@ -409,9 +419,26 @@ final class PickerWindow: NSObject, NSWindowDelegate,
         return false
     }
 
-    /// ↩ (and double-click). With marks: paste ALL marked items in badge
-    /// order. Without: classic single paste of the highlighted row.
+    /// The paste flavor for a pick. Thin forwarder to the pure, unit-tested
+    /// `PasteFlavor.effective` policy (base = the user's default, `⇧`
+    /// inverts); the decision itself lives in `MultipasteCore` so all four
+    /// pref × Shift combinations are locked by tests.
+    private func effectiveFlavor(shiftPressed: Bool) -> PasteFlavor {
+        PasteFlavor.effective(plainTextPasteDefault: prefs.plainTextPasteDefault,
+                              shiftPressed: shiftPressed)
+    }
+
+    /// Double-click on a row. Honors a held Shift as the plain/rich inverter,
+    /// matching the ⇧↩ keyboard path.
     @objc private func commitSelection() {
+        let shift = NSApp.currentEvent?.modifierFlags.contains(.shift) ?? false
+        commit(flavor: effectiveFlavor(shiftPressed: shift))
+    }
+
+    /// ↩ / ⇧↩ / double-click. With marks: paste ALL marked items in badge
+    /// order. Without: classic single paste of the highlighted row. `flavor`
+    /// applies to every item in the pick.
+    private func commit(flavor: PasteFlavor) {
         if !marks.isEmpty {
             // Resolve mark ids → items against the full store, not the
             // filtered view; marked items may be filtered out right now
@@ -422,21 +449,21 @@ final class PickerWindow: NSObject, NSWindowDelegate,
                 clearMarksAndRedraw()
                 return
             }
-            commitItems(chosen)
+            commitItems(chosen, flavor: flavor)
             return
         }
         let row = tableView.selectedRow
         guard row >= 0 && row < filtered.count else { return }
-        commitItems([filtered[row]])
+        commitItems([filtered[row]], flavor: flavor)
     }
 
     /// Common exit path for return-on-selection, multi-paste, AND ⌘1-9
-    /// quick pick: hide panel, snapshot the target app, fire onPick. The
-    /// AppDelegate owns routing + ⌘V synthesis from here.
-    private func commitItems(_ items: [ClipboardItem]) {
+    /// quick pick: hide panel, snapshot the target app, fire onPick with the
+    /// chosen flavor. The AppDelegate owns routing + ⌘V synthesis from here.
+    private func commitItems(_ items: [ClipboardItem], flavor: PasteFlavor) {
         let target = previouslyActiveApp
         hide()
-        onPick(items, target)
+        onPick(items, target, flavor)
     }
 
     // MARK: - Multi-paste marks

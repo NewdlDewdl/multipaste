@@ -21,6 +21,8 @@ enum PreferencesTests {
         TestRegistry.register("Preferences/multiPasteSeparatorDefaultsToNewline", multiPasteSeparatorDefaultsToNewline)
         TestRegistry.register("Preferences/multiPasteSeparatorPersists", multiPasteSeparatorPersists)
         TestRegistry.register("Preferences/multiPasteSeparatorAcceptsArbitraryString", multiPasteSeparatorAcceptsArbitraryString)
+        TestRegistry.register("Preferences/plainTextPasteDefaultDefaultsFalse", plainTextPasteDefaultDefaultsFalse)
+        TestRegistry.register("Preferences/plainTextPasteDefaultRoundTrips", plainTextPasteDefaultRoundTrips)
     }
 
     private static func freshDefaults() -> UserDefaults {
@@ -38,6 +40,21 @@ enum PreferencesTests {
         try expectEqual(p.hotkey.keyCode, 9)
         try expect(p.hotkey.modifiers.contains(.command))
         try expect(p.hotkey.modifiers.contains(.shift))
+    }
+
+    /// Plain-text paste is opt-in as the *default* action: out of the box,
+    /// `↩` still pastes rich (existing muscle memory) and `⇧↩` pastes plain.
+    static func plainTextPasteDefaultDefaultsFalse() throws {
+        let p = Preferences(defaults: freshDefaults())
+        try expect(!p.plainTextPasteDefault, "plain-text-paste-as-default must ship off")
+    }
+
+    static func plainTextPasteDefaultRoundTrips() throws {
+        let d = freshDefaults()
+        let p1 = Preferences(defaults: d)
+        p1.plainTextPasteDefault = true
+        let p2 = Preferences(defaults: d)
+        try expect(p2.plainTextPasteDefault)
     }
 
     static func roundTripPersistence() throws {

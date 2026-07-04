@@ -8,3 +8,6 @@ DerivedData/
 dist/
 Multipaste.app/
 *.zip
+
+# understand-anything plugin output (machine-local analysis state)
+.understand-anything/

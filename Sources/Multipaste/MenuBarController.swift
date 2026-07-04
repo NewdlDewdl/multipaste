@@ -351,6 +351,7 @@ final class MenuBarController: NSObject, NSMenuDelegate {
 
             • Open with \(hotkeyDisplay)
             • ⌘1–9 to quick-paste recent items
+            • ⇧↩ pastes the other flavor (plain text ↔ rich)
             • ⌘P to pin, ⌘⌫ to delete
             • Pinned items survive history eviction
 

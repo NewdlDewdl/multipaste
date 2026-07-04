@@ -35,6 +35,10 @@ enum HistoryStoreTests {
         TestRegistry.register("HistoryStore/unpinDoesNotReorderOtherItems", unpinDoesNotReorderOtherItems)
         TestRegistry.register("HistoryStore/searchResultsAreAlwaysPinnedFirst", searchResultsAreAlwaysPinnedFirst)
         TestRegistry.register("HistoryStore/itemsStaysChronologicalEvenWhenSortedHoists", itemsStaysChronologicalEvenWhenSortedHoists)
+        TestRegistry.register("HistoryStore/reCopyPreservesSnippetTrigger", reCopyPreservesSnippetTrigger)
+        TestRegistry.register("HistoryStore/reCopyKeepsIncomingTriggerOverExisting", reCopyKeepsIncomingTriggerOverExisting)
+        TestRegistry.register("HistoryStore/reCopySamePlainDifferentRtfKeepsSnippetPayload", reCopySamePlainDifferentRtfKeepsSnippetPayload)
+        TestRegistry.register("HistoryStore/reCopyNonSnippetAdoptsNewestPayload", reCopyNonSnippetAdoptsNewestPayload)
     }
 
     private static func makeStore(max: Int = 50) -> (HistoryStore, URL) {
@@ -64,6 +68,86 @@ enum HistoryStoreTests {
         try expectEqual(store.items[0].preview, "a", "duplicate should resurface to top")
         try expectEqual(store.items[1].preview, "c")
         try expectEqual(store.items[2].preview, "b")
+    }
+
+    /// Regression guard for the silent-snippet-death bug: re-copying a
+    /// snippet's exact body used to drop its trigger (insert preserved
+    /// `pinned` but not `trigger`, and a fresh factory item has
+    /// `trigger == nil`), leaving a pinned-but-dead item that no longer
+    /// expands. The resurfaced item must keep both its pin and its trigger.
+    static func reCopyPreservesSnippetTrigger() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("you@example.com"))
+        store.setTrigger(id: store.items[0].id, trigger: ";e") // auto-pins
+        try expect(store.items[0].pinned)
+        try expectEqual(store.items[0].trigger, ";e")
+
+        // User copies the same address again from somewhere else.
+        store.insert(.text("you@example.com"))
+        try expectEqual(store.items.count, 1, "same content dedups, not duplicates")
+        try expectEqual(store.items[0].trigger, ";e", "the snippet trigger must survive the re-copy")
+        try expect(store.items[0].pinned, "and it must stay pinned so SnippetMatcher still fires it")
+    }
+
+    /// If the incoming item already carries its own trigger, that wins; the
+    /// inheritance only fills a `nil` trigger. (Guards the `fresh.trigger ==
+    /// nil` condition so it can't silently become an unconditional overwrite.)
+    static func reCopyKeepsIncomingTriggerOverExisting() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("body"))
+        store.setTrigger(id: store.items[0].id, trigger: ";old")
+
+        var incoming = ClipboardItem.text("body")
+        incoming.trigger = ";new"
+        store.insert(incoming)
+        try expectEqual(store.items[0].trigger, ";new", "an explicit incoming trigger wins over the inherited one")
+    }
+
+    /// v2.4.0-review security guard (trigger-rebinding): a rich-text
+    /// contentHash covers only the PLAIN text, so a clip with identical
+    /// visible text but different RTF bytes (fonts, colors, an injected
+    /// hyperlink) collides with an existing snippet. Inheriting the trigger
+    /// onto the INCOMING payload would silently rebind the snippet to bytes
+    /// the user never approved; SnippetEngine pastes rich, so the swap
+    /// would be invisible until it fires. A snippet re-copy must resurface
+    /// the EXISTING item wholesale: same payload, same id, trigger intact.
+    static func reCopySamePlainDifferentRtfKeepsSnippetPayload() throws {
+        let (store, _) = makeStore()
+        let originalBytes = Data("{\\rtf1 original signature}".utf8)
+        store.insert(.rtf(rtfData: originalBytes, plain: "Best regards, Rohin"))
+        let originalID = store.items[0].id
+        store.setTrigger(id: originalID, trigger: ";sig") // auto-pins
+
+        // Same visible text, different RTF payload (e.g. a link wrapper).
+        let foreignBytes = Data("{\\rtf1 evil hyperlink wrapper}".utf8)
+        store.insert(.rtf(rtfData: foreignBytes, plain: "Best regards, Rohin"))
+
+        try expectEqual(store.items.count, 1, "same plain text still dedups")
+        try expectEqual(store.items[0].id, originalID, "the EXISTING snippet item resurfaces, not the incoming clip")
+        try expectEqual(store.items[0].trigger, ";sig", "trigger survives")
+        try expect(store.items[0].pinned, "pin survives")
+        guard case .rtf(let rtfData, _) = store.items[0].kind else {
+            throw TestFailure(message: "snippet must stay an RTF item", file: #file, line: #line)
+        }
+        try expectEqual(rtfData, originalBytes,
+                        "the snippet's expansion payload must NOT silently rebind to the incoming bytes")
+    }
+
+    /// Documents the flip side: content WITHOUT a trigger keeps the
+    /// adopt-newest-payload behavior (a re-copy refreshes the stored bytes),
+    /// so the snippet-payload guard above stays scoped to snippets.
+    static func reCopyNonSnippetAdoptsNewestPayload() throws {
+        let (store, _) = makeStore()
+        let oldBytes = Data("{\\rtf1 old}".utf8)
+        let newBytes = Data("{\\rtf1 new}".utf8)
+        store.insert(.rtf(rtfData: oldBytes, plain: "same text"))
+        store.insert(.rtf(rtfData: newBytes, plain: "same text"))
+        try expectEqual(store.items.count, 1)
+        guard case .rtf(let rtfData, _) = store.items[0].kind else {
+            throw TestFailure(message: "expected an RTF item", file: #file, line: #line)
+        }
+        try expectEqual(rtfData, newBytes,
+                        "a non-snippet re-copy adopts the newest payload (freshest formatting wins)")
     }
 
     static func maxItemsEvictsOldestUnpinned() throws {
