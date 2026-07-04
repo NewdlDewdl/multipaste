@@ -1,5 +1,41 @@
 # Changelog
 
+## 2.4.1 (2026-07-04)
+
+**`⌘1`-`⌘9` now quick-paste your RECENT items: digits skip the pinned
+block, so `⌘1` is always the most recent thing you copied.**
+
+Previously the digits counted rows from the top of the list, and pinned
+items sort first, so pinning four items silently moved `⌘1`-`⌘4` onto
+the pins and pushed your recents to `⌘5`+. Pins are the stable rail
+(they never move, and snippets/⌘P serve them already); recency is what
+quick-pick is for. Now the Nth digit is the Nth unpinned item, in the
+picker and in the menu-bar Recent list alike.
+
+- **One policy, three surfaces.** The digit assignment lives in a new
+  pure-`MultipasteCore` policy (`QuickPick`): the picker's `⌘N` row
+  badges, the picker's `⌘digit` key handler, and the menu bar's key
+  equivalents all derive from it, so the badge a row shows is always
+  the digit that pastes it. A structural drift test locks the
+  invariant. 8 new unit tests (mixed/all-pinned/none-pinned lists,
+  beyond-`⌘9`, out-of-range digits, filtered renumbering); count
+  302 → 310.
+- **Pinned rows show no digit badge** (they were `⌘1`-`⌘4` before if
+  you had four pins). Display order is unchanged: pinned still sort
+  first; only the digit targeting skips them. With a search filter
+  active, digits renumber over the visible unpinned matches.
+- **Menu bar Recent shows every digit target.** The menu now lists the
+  pinned block plus the first nine unpinned items (it previously cut
+  off at nine rows total, which with pins hid some digit targets).
+- For the record: v2.4.0 did not change quick-pick ordering (the
+  pinned-first digits date to v2.1.1); this surfaced now because
+  pinning several prompts at once made the old targeting bite.
+
+**Compatibility.** Drop-in. No data, preference, or migration changes.
+`⌘1`-`⌘9` respect the "paste as plain text by default" preference
+exactly as before; snippet expansion and every other paste path are
+untouched.
+
 ## 2.4.0 (2026-07-03)
 
 **Paste as plain text: press `⇧↩` in the picker and the item pastes with
