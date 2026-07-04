@@ -37,6 +37,16 @@ public enum PasteFlavor: Sendable, Equatable {
         guard shiftPressed else { return base }
         return base == .plainText ? .rich : .plainText
     }
+
+    /// The `↩` / `⇧↩` fragment of the picker's hint legend, matched to the
+    /// preference so the on-screen instruction always tells the truth: with
+    /// the pref ON, a bare `↩` already pastes plain and `⇧↩` is the rich
+    /// escape, so a hardcoded "⇧↩ plain text" would instruct the user to do
+    /// the exact opposite of what happens. Lives here (pure, unit-tested)
+    /// next to `effective`, the rule it narrates.
+    public static func hintKeyLegend(plainTextPasteDefault: Bool) -> String {
+        plainTextPasteDefault ? "↩ paste plain   ⇧↩ rich" : "↩ paste   ⇧↩ plain text"
+    }
 }
 
 /// A fully-resolved description of what to write onto the pasteboard for a

@@ -29,6 +29,10 @@
 // separately unit-tested in Tests/MultipasteCoreTests/PlainTextTests.swift
 // against the REAL MultipasteCore code; this script proves the AppKit
 // write those decisions drive behaves as claimed on a live pasteboard.
+// The SHIPPED executor (Paster.put in the executable target) is verified
+// directly by `Multipaste --paste-smoke` (PasteSmokeCheck.swift), which
+// `make plaintext-smoke-test` runs right after this script; this mirror
+// exists so there's also a zero-build, dependency-free demonstration.
 //
 // Exit codes: 0 = all passed, 1 = a step failed.
 

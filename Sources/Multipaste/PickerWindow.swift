@@ -292,7 +292,14 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     /// unpin / delete so the user sees an immediate "yes, I did that"
     /// signal even when the row's visual change isn't dramatic.
     private var hintRestoreTimer: Timer?
-    private let defaultHintText = "↑↓ select   ↩ paste   ⇧↩ plain text   ⌥↩ mark   ⌘1–9 quick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close"
+    /// Computed (not stored) so the `↩`/`⇧↩` fragment follows the
+    /// plain-text-paste preference; the pure mapping is
+    /// `PasteFlavor.hintKeyLegend`. Re-read on every `updateMarkHint()`,
+    /// which `show()` triggers, so toggling the pref in Settings is
+    /// reflected the next time the picker opens.
+    private var defaultHintText: String {
+        "↑↓ select   \(PasteFlavor.hintKeyLegend(plainTextPasteDefault: prefs.plainTextPasteDefault))   ⌥↩ mark   ⌘1–9 quick   ⌘⌫ delete   ⌘P pin   ⌘E snippet   esc close"
+    }
 
     private func flashHint(_ message: String, duration: TimeInterval = 1.6) {
         hintLabel.stringValue = message

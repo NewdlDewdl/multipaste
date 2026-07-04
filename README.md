@@ -161,8 +161,9 @@ background colors, mismatched fonts, all gone. Everything else is
 unchanged (it still routes into the app you were in, still honors marks
 for multi-paste).
 
-- **Rich text / RTF** → the plain text only; the `.rtf` representation is
-  never put on the pasteboard.
+- **Rich text / RTF** → the plain text only; the `.rtf` representation
+  stays off the pasteboard. (One deliberate exception, below: a clip whose
+  text content is empty falls back to the rich write.)
 - **A file copy** → its full path as text (the same path text a single
   file copy already exposes to code editors).
 - **An image** → falls back to pasting the image (an image has no

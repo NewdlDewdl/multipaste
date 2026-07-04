@@ -32,15 +32,31 @@ public final class HistoryStore {
     public func insert(_ item: ClipboardItem) {
         var fresh = item
         if let existing = items.first(where: { $0.contentHash == item.contentHash }) {
-            // re-copy of an item we've seen: preserve its pinned state AND
-            // its snippet trigger. A fresh factory item carries trigger=nil,
-            // so without this a snippet's expansion would silently die the
-            // moment you re-copied its exact body: the item stays pinned but
-            // stops firing (SnippetMatcher needs pinned AND a non-empty
-            // trigger). Only inherit when the incoming item doesn't already
-            // define its own trigger.
-            fresh.pinned = existing.pinned
-            if fresh.trigger == nil { fresh.trigger = existing.trigger }
+            if fresh.trigger == nil, existing.trigger != nil {
+                // Re-copy of a SNIPPET's content: resurface the existing
+                // item wholesale (payload, pin, trigger, id) instead of
+                // adopting the incoming bytes. Two reasons:
+                //  1. Without at least trigger inheritance, a re-copy would
+                //     silently kill the snippet (a fresh factory item has
+                //     trigger=nil, and SnippetMatcher needs pinned AND a
+                //     non-empty trigger). That was the original v2.4.0 bug.
+                //  2. Adopting the incoming PAYLOAD would be worse than the
+                //     original bug: a rich-text contentHash covers only the
+                //     PLAIN text, so a clip with identical visible text but
+                //     different RTF (fonts, colors, even an injected
+                //     hyperlink) collides with the snippet, and the trigger
+                //     would silently rebind to bytes the user never
+                //     approved. SnippetEngine pastes rich, so the swap
+                //     would be invisible until it fires somewhere real.
+                // To change what a snippet expands to, edit it explicitly
+                // (⌘E, or set a trigger on the new item).
+                fresh = existing
+            } else {
+                // Plain re-copy of known content: preserve its pinned
+                // state. An incoming item that defines its own trigger
+                // wins wholesale; that's an explicit user action.
+                fresh.pinned = existing.pinned
+            }
         }
         items.removeAll { $0.contentHash == item.contentHash }
         items.insert(fresh, at: 0)

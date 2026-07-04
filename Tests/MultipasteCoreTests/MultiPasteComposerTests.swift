@@ -27,6 +27,9 @@ enum MultiPasteComposerTests {
         TestRegistry.register("MultiPasteComposer/combinedTextItemHasUsablePreview", combinedTextItemHasUsablePreview)
         TestRegistry.register("MultiPasteComposer/textRepresentationPerKind", textRepresentationPerKind)
         TestRegistry.register("MultiPasteComposer/interItemDelayIsHumanImperceptibleButSafe", interItemDelayIsHumanImperceptibleButSafe)
+        TestRegistry.register("MultiPasteComposer/allFilesPlainTextJoinsPathsWithSeparator", allFilesPlainTextJoinsPathsWithSeparator)
+        TestRegistry.register("MultiPasteComposer/allFilesRichStaysOneMultiFilePaste", allFilesRichStaysOneMultiFilePaste)
+        TestRegistry.register("MultiPasteComposer/planWithoutFlavorDefaultsToRich", planWithoutFlavorDefaultsToRich)
     }
 
     // MARK: - Fixtures
@@ -123,6 +126,49 @@ enum MultiPasteComposerTests {
         }
         try expectEqual(urls.map(\.path), ["/tmp/a.txt", "/tmp/b.txt", "/tmp/c.txt"],
                         "pasting the same file twice in one operation is meaningless; dedupe, keep first slot")
+    }
+
+    /// v2.4.0-review regression guard: an all-file pick pasted PLAIN must
+    /// honor the user's multi-paste separator, exactly like two marked text
+    /// items would under the same `⇧↩` gesture. (Pasted rich, it stays a
+    /// multi-file pasteboard; see `allFilesRichStaysOneMultiFilePaste`.)
+    static func allFilesPlainTextJoinsPathsWithSeparator() throws {
+        let one = files(["/tmp/a.txt"])
+        let two = files(["/tmp/b.txt"])
+        guard case .combined(let item)? = MultiPasteComposer.plan(items: [one, two], separator: ", ",
+                                                                  flavor: .plainText),
+              case .text(let joined) = item.kind else {
+            throw TestFailure(message: "all-file pick pasted plain must combine as separator-joined text",
+                              file: #file, line: #line)
+        }
+        try expectEqual(joined, "/tmp/a.txt, /tmp/b.txt",
+                        "plain multi-file paste honors the user's separator")
+    }
+
+    /// Guards the guard: the plain-text routing must not leak into the rich
+    /// path. Rich all-file picks keep the one-multi-file-pasteboard plan.
+    static func allFilesRichStaysOneMultiFilePaste() throws {
+        let one = files(["/tmp/a.txt"])
+        let two = files(["/tmp/b.txt"])
+        guard case .combined(let item)? = MultiPasteComposer.plan(items: [one, two], separator: ", ",
+                                                                  flavor: .rich),
+              case .fileURLs(let urls) = item.kind else {
+            throw TestFailure(message: "rich all-file pick must stay a multi-file pasteboard",
+                              file: #file, line: #line)
+        }
+        try expectEqual(urls.map(\.path), ["/tmp/a.txt", "/tmp/b.txt"])
+    }
+
+    /// Backward-compat pin: `plan` without a flavor argument behaves exactly
+    /// like the pre-flavor API (rich), so no existing caller changes meaning.
+    static func planWithoutFlavorDefaultsToRich() throws {
+        let one = files(["/tmp/a.txt"])
+        let two = files(["/tmp/b.txt"])
+        guard case .combined(let item)? = MultiPasteComposer.plan(items: [one, two], separator: ", "),
+              case .fileURLs = item.kind else {
+            throw TestFailure(message: "flavor-less plan() must default to the rich multi-file behavior",
+                              file: #file, line: #line)
+        }
     }
 
     static func textPlusFilesCombinesUsingPaths() throws {

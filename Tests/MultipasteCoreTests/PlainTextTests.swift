@@ -34,6 +34,8 @@ enum PlainTextTests {
         TestRegistry.register("PlainText/effectiveFlavorPrefOffShiftIsPlain", effectiveFlavorPrefOffShiftIsPlain)
         TestRegistry.register("PlainText/effectiveFlavorPrefOnNoShiftIsPlain", effectiveFlavorPrefOnNoShiftIsPlain)
         TestRegistry.register("PlainText/effectiveFlavorPrefOnShiftIsRich", effectiveFlavorPrefOnShiftIsRich)
+        TestRegistry.register("PlainText/hintKeyLegendPrefOffSaysShiftIsPlain", hintKeyLegendPrefOffSaysShiftIsPlain)
+        TestRegistry.register("PlainText/hintKeyLegendPrefOnSaysShiftIsRich", hintKeyLegendPrefOnSaysShiftIsRich)
     }
 
     // MARK: - Fixtures
@@ -198,5 +200,23 @@ enum PlainTextTests {
     static func effectiveFlavorPrefOnShiftIsRich() throws {
         try expectEqual(PasteFlavor.effective(plainTextPasteDefault: true, shiftPressed: true), .rich,
                         "pref on: ⇧↩ pastes the rich original")
+    }
+
+    // MARK: - PasteFlavor.hintKeyLegend(plainTextPasteDefault:)
+    //
+    // v2.4.0-review regression guard: the picker's hint bar used to
+    // hardcode "⇧↩ plain text", which is the exact OPPOSITE of what ⇧↩
+    // does once the pref is on. The legend must always narrate
+    // `PasteFlavor.effective` truthfully.
+
+    static func hintKeyLegendPrefOffSaysShiftIsPlain() throws {
+        try expectEqual(PasteFlavor.hintKeyLegend(plainTextPasteDefault: false),
+                        "↩ paste   ⇧↩ plain text")
+    }
+
+    static func hintKeyLegendPrefOnSaysShiftIsRich() throws {
+        try expectEqual(PasteFlavor.hintKeyLegend(plainTextPasteDefault: true),
+                        "↩ paste plain   ⇧↩ rich",
+                        "with the pref on, ⇧↩ pastes RICH; the legend must not claim plain")
     }
 }

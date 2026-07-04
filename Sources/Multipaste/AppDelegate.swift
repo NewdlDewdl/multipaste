@@ -343,7 +343,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                               previousApp: NSRunningApplication?,
                               flavor: PasteFlavor) {
         guard let plan = MultiPasteComposer.plan(items: items,
-                                                 separator: prefs.multiPasteSeparator) else { return }
+                                                 separator: prefs.multiPasteSeparator,
+                                                 flavor: flavor) else { return }
         switch plan {
         case .single(let item):
             deliver(item, previousApp: previousApp, flavor: flavor, label: "single")

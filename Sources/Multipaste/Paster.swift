@@ -29,7 +29,10 @@ enum Paster {
     /// The *decision* (which pasteboard types to declare and what bytes they
     /// carry) lives in the pure, unit-tested `PlainText.pasteWrite`; this
     /// method is just the `NSPasteboard` executor. `pasteboard` is injectable
-    /// so a smoke test can assert the write against a private pasteboard.
+    /// so the `--paste-smoke` self-check (`PasteSmokeCheck`, run by
+    /// `make plaintext-smoke-test`) can assert THIS method's writes against
+    /// a private pasteboard; that's the executor's direct coverage, since
+    /// unit tests can't import the executable target.
     static func put(_ item: ClipboardItem,
                     flavor: PasteFlavor = .rich,
                     to pasteboard: NSPasteboard = .general) {

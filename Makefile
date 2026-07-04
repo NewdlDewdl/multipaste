@@ -16,13 +16,18 @@ smoke-test:
 	@swift scripts/screenshot-smoke-test.swift
 
 # End-to-end integration smoke test of the plain-text-paste feature
-# (⇧↩). Mirrors PlainText.pasteWrite + Paster.put and runs the write
-# against a PRIVATE NSPasteboard, proving a plain-text paste leaves
-# .string and strips the .rtf type on a live pasteboard. The pure
-# per-kind mapping is unit-tested in PlainTextTests; this proves the
-# AppKit write those decisions drive.
+# (⇧↩), in two layers, both against PRIVATE NSPasteboards (the user's
+# clipboard is never touched):
+#  1. scripts/plaintext-paste-smoke-test.swift: a dependency-free mirror
+#     of the policy + executor (a `swift file.swift` script can't import
+#     the package), proving the write behavior on a live pasteboard.
+#  2. `Multipaste --paste-smoke` (PasteSmokeCheck.swift): the SHIPPED
+#     Paster.put executor itself, so a mutation to the real executor
+#     fails this gate even though unit tests never compile it.
 plaintext-smoke-test:
 	@swift scripts/plaintext-paste-smoke-test.swift
+	@swift build -c debug 2>/dev/null >/dev/null
+	@.build/debug/Multipaste --paste-smoke
 
 # Visual preview of the "vX.Y.Z is available" update dialog —
 # uses the actual v2.0.2 CHANGELOG markdown that produced the bug

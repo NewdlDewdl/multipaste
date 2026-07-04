@@ -29,8 +29,8 @@ public enum MultiPastePlan: Equatable {
 /// | ---------------------------------- | ------------------------------- |
 /// | none                               | `nil` (nothing to do)           |
 /// | exactly one                        | `.single`, classic path        |
-/// | all file-URL items                 | `.combined` multi-file pasteboard (order-preserving, deduped) |
-/// | all text-representable (text/RTF/files) | `.combined` text joined with the separator |
+/// | all file-URL items (rich flavor)   | `.combined` multi-file pasteboard (order-preserving, deduped) |
+/// | all text-representable (text/RTF/files; incl. all-file picks pasted plain) | `.combined` text joined with the separator |
 /// | anything else (an image in the mix)| `.sequential` in mark order     |
 ///
 /// Why combine instead of always pasting sequentially? One pasteboard
@@ -69,11 +69,19 @@ public enum MultiPasteComposer {
     /// Decide how to paste `items` (in the given order). `separator`
     /// joins text-like items in a combined paste; the user picks it in
     /// Preferences (`Preferences.multiPasteSeparator`, default newline).
-    public static func plan(items: [ClipboardItem], separator: String) -> MultiPastePlan? {
+    ///
+    /// `flavor` matters for one case: an all-file pick pasted as PLAIN
+    /// TEXT routes through the text-join branch (paths joined with the
+    /// user's separator) instead of the multi-file pasteboard. Two marked
+    /// text items and two marked files must not join differently under
+    /// the same `⇧↩` gesture. The default `.rich` preserves the historical
+    /// behavior for every existing caller.
+    public static func plan(items: [ClipboardItem], separator: String,
+                            flavor: PasteFlavor = .rich) -> MultiPastePlan? {
         guard let first = items.first else { return nil }
         guard items.count > 1 else { return .single(first) }
 
-        if items.allSatisfy(isFileURLs) {
+        if flavor == .rich, items.allSatisfy(isFileURLs) {
             return .combined(.fileURLs(mergedURLs(of: items)))
         }
 
