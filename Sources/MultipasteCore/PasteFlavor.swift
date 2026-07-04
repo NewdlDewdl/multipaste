@@ -6,10 +6,10 @@ import Foundation
 /// Which representation of an item to put on the pasteboard when the user
 /// pastes it.
 ///
-/// - `.rich`  — the item's richest form: RTF for rich text, PNG for images,
+/// - `.rich`: the item's richest form, RTF for rich text, PNG for images,
 ///   file URLs for file copies, plain string for plain text. This is the
 ///   historical (and default) behavior.
-/// - `.plainText` — strip all formatting: paste the unstyled string. A
+/// - `.plainText`: strip all formatting and paste the unstyled string. A
 ///   styled clip from a webpage / Word / Notion arrives as clean text with
 ///   no fonts, colors, or sizes. Bound to `⇧↩` in the picker.
 ///
@@ -26,7 +26,7 @@ public enum PasteFlavor: Sendable, Equatable {
     /// The base is the preference (`false` → `.rich`, `true` → `.plainText`);
     /// Shift inverts it. So with the shipped default (pref off), `↩` pastes
     /// rich and `⇧↩` pastes plain text; with the pref on, `↩` pastes plain
-    /// and `⇧↩` pastes the rich original. Symmetric either way — the other
+    /// and `⇧↩` pastes the rich original. Symmetric either way; the other
     /// flavor is always exactly one `⇧` away.
     ///
     /// Lives here (not in the picker) so the decision is pure and
@@ -42,8 +42,8 @@ public enum PasteFlavor: Sendable, Equatable {
 /// A fully-resolved description of what to write onto the pasteboard for a
 /// single item, in the chosen `PasteFlavor`.
 ///
-/// This exists so the *decision* — which pasteboard types get declared and
-/// what bytes they carry — is pure, `AppKit`-free, and unit-testable. The
+/// This exists so the *decision* (which pasteboard types get declared and
+/// what bytes they carry) is pure, `AppKit`-free, and unit-testable. The
 /// app layer's `Paster` is then a thin executor that maps each case to the
 /// matching `NSPasteboard` calls, with no policy of its own. In particular,
 /// the load-bearing "paste as plain text strips the RTF" guarantee is
@@ -98,12 +98,12 @@ public enum PlainText {
     /// `.plainText` collapses every text-bearing kind to `.string` (plain):
     /// rich text drops its `.rtf`, a file copy becomes its path text. An
     /// image has no plain form, so `.plainText` on an image falls back to the
-    /// rich `.image` write — a `⇧↩` on an image still pastes the image rather
+    /// rich `.image` write; a `⇧↩` on an image still pastes the image rather
     /// than silently pasting nothing. The same fallback applies when the
     /// plain form is EMPTY: an RTF item whose parsed text is "" is capturable
     /// (`ClipboardMonitor` only guards emptiness for plain-text captures), and
     /// writing `.string("")` would clobber the clipboard with nothing and
-    /// paste nothing. Whitespace-only plain text is NOT empty — pasting
+    /// paste nothing. Whitespace-only plain text is NOT empty; pasting
     /// spaces or newlines plain is legitimate and stays `.string`.
     public static func pasteWrite(for item: ClipboardItem, flavor: PasteFlavor) -> PasteWrite {
         switch flavor {

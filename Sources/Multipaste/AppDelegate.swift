@@ -58,7 +58,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             guard let self else { return }
             // The menu-bar quick-pick honors "Paste as plain text by
             // default" the same way ⌘1-9 in the picker does (base flavor,
-            // no Shift inversion — a menu click has no ⇧↩ affordance).
+            // no Shift inversion; a menu click has no ⇧↩ affordance).
             self.pickAndPaste([item], previousApp: nil,
                               flavor: PasteFlavor.effective(
                                 plainTextPasteDefault: self.prefs.plainTextPasteDefault,

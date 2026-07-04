@@ -108,7 +108,7 @@ enum PlainTextTests {
     }
 
     /// THE load-bearing test: pasting a rich-text item plain resolves to a
-    /// bare `.string` with the plain fallback — the `.rtf` is gone.
+    /// bare `.string` with the plain fallback; the `.rtf` is gone.
     static func pasteWritePlainRtfStripsRtf() throws {
         let item = rtfItem(plain: "just the words")
         let write = PlainText.pasteWrite(for: item, flavor: .plainText)
@@ -141,7 +141,7 @@ enum PlainTextTests {
     }
 
     /// Regression guard (found in the v2.4.0 adversarial review): an RTF
-    /// item whose parsed plain text is EMPTY is capturable — an RTF stub
+    /// item whose parsed plain text is EMPTY is capturable; an RTF stub
     /// like `{\rtf1\ansi}` parses to "", and `ClipboardMonitor.snapshot`
     /// only guards emptiness on the plain-text branch. Pasting it plain
     /// used to resolve to `.string("")`, which clears the clipboard and

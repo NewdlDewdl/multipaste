@@ -87,7 +87,7 @@ enum HistoryStoreTests {
         try expect(store.items[0].pinned, "and it must stay pinned so SnippetMatcher still fires it")
     }
 
-    /// If the incoming item already carries its own trigger, that wins — the
+    /// If the incoming item already carries its own trigger, that wins; the
     /// inheritance only fills a `nil` trigger. (Guards the `fresh.trigger ==
     /// nil` condition so it can't silently become an unconditional overwrite.)
     static func reCopyKeepsIncomingTriggerOverExisting() throws {

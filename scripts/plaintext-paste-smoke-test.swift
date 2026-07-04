@@ -6,7 +6,7 @@
 // (⇧↩). Mirrors the decision in `MultipasteCore/PasteFlavor.swift`
 // (`PlainText.pasteWrite`) and the executor in `Multipaste/Paster.swift`
 // (`Paster.put`), then runs the resulting write against a PRIVATE
-// NSPasteboard — so it neither touches nor clobbers the user's real
+// NSPasteboard, so it neither touches nor clobbers the user's real
 // clipboard.
 //
 // Run:
@@ -14,7 +14,7 @@
 //
 // What it verifies, end-to-end (real AppKit pasteboard APIs, no mocks):
 //   1. RICH rtf write declares BOTH .rtf and .string, and both read back.
-//   2. PLAIN rtf write declares .string ONLY — the .rtf type is GONE.
+//   2. PLAIN rtf write declares .string ONLY; the .rtf type is GONE.
 //      (This is the load-bearing "paste as plain text strips formatting"
 //      guarantee, proven at the NSPasteboard layer where it actually
 //      matters, not just in the pure mapping.)
@@ -89,7 +89,7 @@ func pasteWrite(for kind: Kind, flavor: Flavor) -> PasteWrite {
     case .plainText:
         // Mirrors the real policy exactly: an EMPTY plain form (empty-plain
         // RTF) falls back to the rich write, same as an image with no plain
-        // form — writing .string("") would clobber the clipboard with nothing.
+        // form; writing .string("") would clobber the clipboard with nothing.
         if let plain = plainString(for: kind), !plain.isEmpty { return .string(plain) }
         return richWrite(for: kind)
     }
@@ -130,7 +130,7 @@ ok("rich rtf → .rtf present AND .string == plain")
 step("2. PLAIN rtf paste strips the .rtf type (the load-bearing guarantee)")
 execute(pasteWrite(for: rtfItem, flavor: .plainText), to: pb)
 if let leaked = pb.data(forType: .rtf) {
-    die("plain-text paste LEAKED \(leaked.count) bytes of .rtf — formatting was NOT stripped")
+    die("plain-text paste LEAKED \(leaked.count) bytes of .rtf; formatting was NOT stripped")
 }
 guard pb.string(forType: .string) == "Hello, styled world" else { die("plain rtf paste lost the text") }
 ok("plain rtf → .rtf ABSENT, .string == plain text")
@@ -149,13 +149,13 @@ ok("plain image → falls back to .png (⇧↩ on an image still pastes the imag
 
 step("5. PLAIN empty-plain rtf falls back to the rich write (no clipboard clobber)")
 // An RTF stub like {\rtf1\ansi} parses to an empty string, and the capture
-// side only guards emptiness for plain-text items — so this state is real.
+// side only guards emptiness for plain-text items, so this state is real.
 // Pre-review, pasting it plain wrote .string(""): clipboard cleared, nothing
 // pasted. Now it must fall back to the rich rtf write.
 let emptyStub = Data("{\\rtf1\\ansi}".utf8)
 execute(pasteWrite(for: .rtf(rtf: emptyStub, plain: ""), flavor: .plainText), to: pb)
 guard pb.data(forType: .rtf) == emptyStub else {
-    die("empty-plain rtf pasted plain did NOT fall back to the rich write — the clipboard was clobbered with nothing")
+    die("empty-plain rtf pasted plain did NOT fall back to the rich write; the clipboard was clobbered with nothing")
 }
 ok("plain empty-rtf → falls back to .rtf (destructive-no-op guard)")
 

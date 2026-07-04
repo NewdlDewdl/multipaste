@@ -245,7 +245,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     @objc private func togglePlainTextPasteDefault() {
         // The picker reads prefs.plainTextPasteDefault live on every pick,
-        // so there's nothing to bounce — the next ↩ already honors this.
+        // so there's nothing to bounce; the next ↩ already honors this.
         prefs.plainTextPasteDefault = (plainTextPasteCheckbox.state == .on)
     }
 

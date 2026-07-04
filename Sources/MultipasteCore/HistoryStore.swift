@@ -35,7 +35,7 @@ public final class HistoryStore {
             // re-copy of an item we've seen: preserve its pinned state AND
             // its snippet trigger. A fresh factory item carries trigger=nil,
             // so without this a snippet's expansion would silently die the
-            // moment you re-copied its exact body — the item stays pinned but
+            // moment you re-copied its exact body: the item stays pinned but
             // stops firing (SnippetMatcher needs pinned AND a non-empty
             // trigger). Only inherit when the incoming item doesn't already
             // define its own trigger.

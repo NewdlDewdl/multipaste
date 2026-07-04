@@ -21,13 +21,13 @@ enum Paster {
     ///
     /// - `.rich` (default) preserves the richest representation: RTF for rich
     ///   text, multiple URLs for files, raw PNG bytes for images. Byte-for-byte
-    ///   the pre-v2.4.0 behavior — every existing caller is unaffected.
+    ///   the pre-v2.4.0 behavior; every existing caller is unaffected.
     /// - `.plainText` strips formatting: rich text drops its `.rtf` and
     ///   pastes only the plain string; a file copy pastes its path text; an
     ///   image (which has no plain form) falls back to the rich image write.
     ///
-    /// The *decision* — which pasteboard types to declare and what bytes they
-    /// carry — lives in the pure, unit-tested `PlainText.pasteWrite`; this
+    /// The *decision* (which pasteboard types to declare and what bytes they
+    /// carry) lives in the pure, unit-tested `PlainText.pasteWrite`; this
     /// method is just the `NSPasteboard` executor. `pasteboard` is injectable
     /// so a smoke test can assert the write against a private pasteboard.
     static func put(_ item: ClipboardItem,

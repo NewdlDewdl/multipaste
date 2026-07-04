@@ -414,7 +414,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
 
     /// The paste flavor for a pick. Thin forwarder to the pure, unit-tested
     /// `PasteFlavor.effective` policy (base = the user's default, `⇧`
-    /// inverts) — the decision itself lives in `MultipasteCore` so all four
+    /// inverts); the decision itself lives in `MultipasteCore` so all four
     /// pref × Shift combinations are locked by tests.
     private func effectiveFlavor(shiftPressed: Bool) -> PasteFlavor {
         PasteFlavor.effective(plainTextPasteDefault: prefs.plainTextPasteDefault,
