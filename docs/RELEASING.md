@@ -124,8 +124,9 @@ needed). The whole checklist is drivable headlessly; recipe:
   the pasteboard TYPES: `public.rtf` present = rich paste, string-only =
   plain paste, file URLs = rich file paste. Pair each check with the log
   line (`pickAndPaste[single|combined(N items)]`) to prove a paste really
-  executed. A tiny AppKit CLI that writes sentinel rich/file clips and
-  dumps types does the rest.
+  executed. The tool for both halves is in-repo: `scripts/pbtool.swift`
+  (compile with `swiftc -O scripts/pbtool.swift -o /tmp/pbtool`), modes
+  `rich <text>` / `file <path...>` / `info`.
 - **Pinned items sort first**, so ↩ right after open pastes a pin, not
   your sentinel. Always type a unique filter (e.g. `PASTECHECK`) before
   ↩ / ⇧↩.
