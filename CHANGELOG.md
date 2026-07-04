@@ -66,16 +66,28 @@ layer just executes it:
 
 ### Hardened by an adversarial review before release
 
-The change was audited end-to-end (correctness, security, edge cases,
-pasteboard pitfalls, API design, backward compat, test-mutation survival,
-docs) before shipping; see `docs/reviews/v2.4.0-FINDINGS.md` for the full
-report. Four findings were fixed, each with a mutation-tested regression
-test:
+The change was audited end-to-end before shipping: an 8-lens adversarial
+swarm (correctness, security, edge cases, pasteboard pitfalls, API
+design, backward compat, test-mutation survival, docs/a11y) produced 27
+raw findings, 17 confirmed after adversarial verification; see
+`docs/reviews/v2.4.0-FINDINGS.md` for the full report. Every confirmed
+code defect was fixed, each with a mutation-tested regression test:
 
 - **Empty-plain rich text no longer clobbers the clipboard.** `⇧↩` on an
   RTF item whose parsed text is empty used to write `.string("")`:
   clipboard cleared, nothing pasted. It now falls back to the rich write,
   exactly like an image with no plain form.
+- **A snippet can't be silently rebound to foreign bytes.** A rich-text
+  `contentHash` covers only the plain text, so a clip with identical
+  visible text but different RTF (fonts, colors, an injected hyperlink)
+  collides with an existing snippet; adopting the incoming payload would
+  have rebound the trigger to bytes the user never approved. A snippet
+  re-copy now resurfaces the existing item wholesale (payload, pin,
+  trigger, id); non-snippet re-copies still adopt the newest payload.
+- **The picker's hint bar tells the truth in both pref states.** It used
+  to hardcode `⇧↩ plain text`, the exact opposite of what `⇧↩` does once
+  "plain by default" is on; the legend now narrates the actual mapping
+  (`PasteFlavor.hintKeyLegend`, unit-tested).
 - **The flavor decision table moved into `MultipasteCore`.**
   `effectiveFlavor` was pure logic living untested in AppKit; it's now
   `PasteFlavor.effective`, with all four pref × Shift combinations locked
@@ -83,9 +95,25 @@ test:
 - **The menu-bar Recent quick-pick honors the preference.** It silently
   ignored "Paste as plain text by default" (the picker-only wiring never
   reached it); it now uses the base flavor, consistent with `⌘1–9`.
+- **All-file multi-paste pasted plain honors the separator.** Marked
+  files pasted `⇧↩` join their paths with the user's multi-paste
+  separator, the same way marked text items join under the same gesture
+  (rich all-file picks stay one multi-file pasteboard).
+- **The shipped executor has direct automated coverage.** Unit tests
+  can't import the executable target, so a mutation to `Paster.put`
+  survived every unit test AND the mirror-based smoke script. The hidden
+  `Multipaste --paste-smoke` self-check (`PasteSmokeCheck`) now runs the
+  REAL executor against a private pasteboard as part of
+  `make plaintext-smoke-test`; the same mutation now fails the gate.
 - **Dead code removed**: `HistoryStore`'s never-used `DispatchQueue`
   (declared in v1.1.0, never referenced) and the unused `.rich` parameter
   default on `AppDelegate.pickAndPaste` (both callers pass explicitly).
+
+Accepted as designed, now documented: pasting a rich item plain
+re-captures the plain text as its own history entry (reusable; see
+above), and RTF capture derives its plain fallback by parsing the RTF
+rather than reading the source app's `.string` (pre-existing, out of
+this change's scope, on the roadmap).
 
 ### Also fixed: re-copying a snippet's text killed the snippet
 
@@ -93,9 +121,11 @@ test:
 not its **trigger**. Since a fresh copy carries `trigger = nil` and
 `SnippetMatcher` only fires on a pinned item with a non-empty trigger,
 re-copying a snippet's exact body left a pinned-but-dead item that
-silently stopped expanding. Insert now inherits the existing trigger on a
-re-copy (only when the incoming item doesn't define its own), the same
-way it already inherits `pinned`.
+silently stopped expanding. Insert now resurfaces the existing snippet
+item wholesale on a re-copy (payload, pin, trigger, id), which both keeps
+the snippet alive AND keeps its expansion bytes stable (see the
+trigger-rebinding guard in the review section above). An incoming item
+that defines its own trigger still wins; that's an explicit user action.
 
 ### What changed
 
@@ -107,13 +137,20 @@ way it already inherits `pinned`.
   (one source of truth; behavior-preserving).
 - **`Sources/MultipasteCore/Preferences.swift`**: `plainTextPasteDefault`
   (Bool, default false).
-- **`Sources/MultipasteCore/HistoryStore.swift`**: `insert` inherits the
-  existing snippet trigger on a re-copy.
+- **`Sources/MultipasteCore/HistoryStore.swift`**: `insert` resurfaces
+  the existing item wholesale when a re-copy collides with a snippet
+  (trigger survives, payload can't be silently swapped).
+- **`Sources/Multipaste/PasteSmokeCheck.swift`** (new) + a `--paste-smoke`
+  branch in `main.swift`: the shipped `Paster.put` executor self-check
+  (7 checks against a private pasteboard).
+- **`Sources/Multipaste/MenuBarController.swift`**: About dialog lists
+  the `⇧↩` shortcut.
 - **`Sources/Multipaste/Paster.swift`**: `put(_:flavor:to:)` executes a
   `PasteWrite`; injectable pasteboard.
 - **`Sources/Multipaste/PickerWindow.swift`**: `⇧↩` (and ⇧-double-click)
-  paste plain; `effectiveFlavor`; `onPick` carries the flavor; hint bar
-  shows `⇧↩ plain text`.
+  paste plain; `effectiveFlavor` forwards to `PasteFlavor.effective`;
+  `onPick` carries the flavor; the hint bar's `↩`/`⇧↩` legend is
+  pref-aware (`PasteFlavor.hintKeyLegend`).
 - **`Sources/Multipaste/AppDelegate.swift`**: the flavor threads through
   `pickAndPaste` → `deliver` / `deliverSequentially` / `pasteSequentially`;
   the menu-bar quick-pick resolves its flavor from the preference.
@@ -123,12 +160,12 @@ way it already inherits `pinned`.
   plaintext-smoke-test`: proves on a live `NSPasteboard` that a
   plain-text paste keeps `.string` and drops `.rtf`, and that an
   empty-plain rich clip falls back to the rich write (5 checks).
-- **Tests**: 24 new (20 `PlainText`, 2 `HistoryStore` trigger-preservation,
-  2 `Preferences`); **295 total**.
+- **Tests**: 31 new (22 `PlainText`, 4 `HistoryStore`, 3
+  `MultiPasteComposer`, 2 `Preferences`); **302 total**.
 - **`Sources/MultipasteCore/Version.swift`** / **`Resources/Info.plist`**:
   2.3.0 → 2.4.0 (`CFBundleVersion` 23 → 24).
 - **`README.md`** / **`SECURITY.md`**: plain-text paste documented; test
-  count 271 → 295; current release 2.4.0.
+  count 271 → 302; current release 2.4.0.
 
 ### Compatibility
 
