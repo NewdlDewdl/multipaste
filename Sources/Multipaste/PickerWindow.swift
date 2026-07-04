@@ -37,7 +37,14 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     private let tableView: NSTableView
     private let hintLabel: NSTextField
 
-    private var filtered: [ClipboardItem] = []
+    private var filtered: [ClipboardItem] = [] {
+        didSet { digitLabels = QuickPick.labels(for: filtered) }
+    }
+    /// Per-row ⌘digit labels for `filtered` (nil = pinned row or beyond
+    /// ⌘9). Derived from the same QuickPick policy the ⌘digit handler
+    /// resolves against, so the badge a row shows and the item a digit
+    /// pastes can never disagree.
+    private var digitLabels: [Int?] = []
     private var query: String = ""
     private var storeToken: HistoryStore.Token?
     private var keyMonitor: Any?
@@ -334,7 +341,7 @@ final class PickerWindow: NSObject, NSWindowDelegate,
     func numberOfRows(in tableView: NSTableView) -> Int { filtered.count }
 
     func tableView(_ tableView: NSTableView, viewFor tableColumn: NSTableColumn?, row: Int) -> NSView? {
-        ItemCellView(item: filtered[row], index: row,
+        ItemCellView(item: filtered[row], digit: digitLabels[row],
                      markIndex: marks.position(of: filtered[row].id))
     }
 
@@ -394,11 +401,12 @@ final class PickerWindow: NSObject, NSWindowDelegate,
             return true
         }
         if isCmd, let digit = Int(chars), digit >= 1 && digit <= 9 {
-            let idx = digit - 1
-            if idx < filtered.count {
-                // ⌘1-9 quick-pick pastes in the user's default flavor;
-                // Shift is reserved for the ⇧↩ path.
-                commitItems([filtered[idx]], flavor: effectiveFlavor(shiftPressed: false))
+            // ⌘1-9 quick-pick targets the RECENT rail: QuickPick resolves
+            // the digit to the Nth UNPINNED filtered row (pinned rows are
+            // the stable rail and carry no digit). Pastes in the user's
+            // default flavor; Shift is reserved for the ⇧↩ path.
+            if let item = QuickPick.target(digit: digit, in: filtered) {
+                commitItems([item], flavor: effectiveFlavor(shiftPressed: false))
             }
             return true
         }
@@ -606,10 +614,12 @@ final class PickerWindow: NSObject, NSWindowDelegate,
 
 private final class ItemCellView: NSView {
 
-    /// `markIndex` is the item's 1-based position in the multi-paste
-    /// order (nil = unmarked). Rendered as a filled accent badge so the
-    /// row visibly answers both "is this in the paste?" and "when?".
-    init(item: ClipboardItem, index: Int, markIndex: Int? = nil) {
+    /// `digit` is the row's ⌘quick-pick digit from the QuickPick policy
+    /// (nil = pinned row or beyond ⌘9, so no badge). `markIndex` is the
+    /// item's 1-based position in the multi-paste order (nil = unmarked),
+    /// rendered as a filled accent badge so the row visibly answers both
+    /// "is this in the paste?" and "when?".
+    init(item: ClipboardItem, digit: Int?, markIndex: Int? = nil) {
         super.init(frame: .zero)
 
         // Pinned-row visual upgrade (v1.9.0): a chunky colored left
@@ -637,7 +647,7 @@ private final class ItemCellView: NSView {
             ])
         }
 
-        let badge = NSTextField(labelWithString: index < 9 ? "⌘\(index + 1)" : "")
+        let badge = NSTextField(labelWithString: digit.map { "⌘\($0)" } ?? "")
         badge.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
         badge.textColor = .tertiaryLabelColor
         badge.alignment = .left

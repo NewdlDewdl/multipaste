@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.4.0 (universal, Intel + Apple Silicon)</strong></a><br>
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.4.1 (universal, Intel + Apple Silicon)</strong></a><br>
   <a href="#install">Install</a> ·
   <a href="#keys">Keys</a> ·
   <a href="#paste-many-things-at-once">Multi-paste</a> ·
@@ -33,9 +33,9 @@ No subscriptions, no Electron, no telemetry, no account. ~1.9 MB
 universal Swift binary in an ~840 KB DMG (one binary for Intel + Apple
 Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
-**Latest release:** [v2.4.0](https://github.com/NewdlDewdl/multipaste/releases/latest)
+**Latest release:** [v2.4.1](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 302 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
+&nbsp;·&nbsp; **Tests:** 310 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
 
 ---
 
@@ -43,7 +43,7 @@ Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-2.4.0.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-2.4.1.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (universal DMG: runs on both Intel and Apple Silicon).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose
@@ -99,7 +99,7 @@ In the picker:
 | `⌥↩` / `⌘-click`   | Mark / unmark item for multi-paste (badge shows paste order)    |
 | `space` (in list)  | Mark / unmark item and step down (search field keeps its space) |
 | `⌥⌘A`              | Mark all visible items (again: unmark them)                     |
-| `⌘1` … `⌘9`        | Quick-paste the Nth visible item                                |
+| `⌘1` … `⌘9`        | Quick-paste the Nth recent (unpinned) item                      |
 | `⌘P`               | Pin / unpin selected item (pinned items always show first)      |
 | `⌘E`               | Set / edit a snippet trigger for the item                       |
 | `⌘⌫`               | Delete selected item from history                               |
@@ -574,7 +574,7 @@ does not make network calls outside the once-a-day update check
   `ClipboardItem`, `HistoryStore`, `MarkList`, `MultiPasteComposer`,
   `MultiPasteSeparator`, `Preferences`, `SnippetMatcher`,
   `SemanticVersion`, `UpdateChecker`, `Version`.
-  All testable. 302 unit tests live here (incl. PlainText for the v2.4.0 paste-as-plain-text feature; MarkList + MultiPasteComposer for the v2.3.0 multi-paste feature; ScreenshotDetector for the screenshots-to-clipboard feature; PasteSynthesis + PasteRouting which lock the ⌘V device-bit and paste-path routing behind the v2.2.0 paste fix; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
+  All testable. 310 unit tests live here (incl. QuickPick for the v2.4.1 recent-rail ⌘1–9 targeting; PlainText for the v2.4.0 paste-as-plain-text feature; MarkList + MultiPasteComposer for the v2.3.0 multi-paste feature; ScreenshotDetector for the screenshots-to-clipboard feature; PasteSynthesis + PasteRouting which lock the ⌘V device-bit and paste-path routing behind the v2.2.0 paste fix; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, and version-string agreement across every artifact).
 - **`Multipaste`** (executable, AppKit-bound) —
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -608,7 +608,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test                    # runs all 302 unit tests in ~0.4 s
+make test                    # runs all 310 unit tests in ~0.4 s
 make smoke-test              # end-to-end integration test of the screenshot pipeline
 make plaintext-smoke-test    # plain-text paste on live pasteboards: mirror script + the SHIPPED executor (--paste-smoke)
 make preview-update-dialog   # visually preview the "vX.Y.Z is available" dialog
@@ -677,7 +677,8 @@ Coverage:
 | `Preferences` (multi-paste separator) | 3 | (v2.3.0) defaults to newline, persists across instances, accepts arbitrary hand-written separator strings |
 | `PlainText`            | 22    | (v2.4.0) paste-as-plain-text policy: `string(for:)` per kind (text verbatim, RTF → stored plain not bytes, files → path text, image → nil); composer `textRepresentation` agrees with `PlainText.string` (locks the one-source-of-truth refactor); `pasteWrite(for:flavor:)` decision table: rich text → `.string`, rich RTF → `.richText(.rtf+.string)`, **plain RTF → `.string` with the `.rtf` type stripped** (the load-bearing guarantee), rich files → `.fileURLs` vs plain files → path `.string`, image → `.image` in both flavors (plain falls back so ⇧↩ still pastes the image); (review hardening) **empty-plain RTF falls back to the rich write** (the `.string("")` clipboard-clobber regression guard) + whitespace-only plain still pastes plain + empty text identical in both flavors; `PasteFlavor.effective` **pref × Shift decision table, all four combinations** (extracted from the picker so it's unit-testable); `PasteFlavor.hintKeyLegend` **pref-aware hint legend** (the picker's on-screen `↩`/`⇧↩` instruction always matches what the keys do) |
 | `Preferences` (plain-text paste default) | 2 | (v2.4.0) defaults OFF (⇧↩ is opt-in), off↔on round trip |
-| **Total**              | **302**| Pure logic; UI is integration-tested manually          |
+| `QuickPick`            | 8     | (v2.4.1) ⌘1–9 digit policy: digits target the first nine UNPINNED rows in display order (pinned rows carry no digit), mixed/all-pinned/none-pinned lists, beyond-⌘9 unlabeled, out-of-range digits nil, filtered subsets renumber from ⌘1, and a **structural drift guard** (any row labeled ⌘N is exactly what `target(digit: N)` pastes, the invariant tying the picker badge, the ⌘digit handler, and the menu key equivalents together) |
+| **Total**              | **310**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -733,7 +734,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 302 unit tests (~0.4 s)
+make test          # run all 310 unit tests (~0.4 s)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -988,5 +989,5 @@ strips a rich clip down to clean text (the whole decision is a pure,
 unit-tested `PlainText` policy, so "strips the RTF" is proven, not
 promised), with an optional "plain by default" preference; it also fixed a
 silent bug where re-copying a snippet's exact text dropped its trigger and
-killed the expansion. 302 tests now.
+killed the expansion. 310 tests now.
 Search before building. Test before shipping. Boil the ocean.

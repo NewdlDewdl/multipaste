@@ -162,17 +162,27 @@ final class MenuBarController: NSObject, NSMenuDelegate {
         // (raw chronological order), which made the Recent menu disagree
         // with the picker after a pin and was part of the "pin does
         // nothing" UX bug Rohin reported.
-        let recent = Array(store.sortedForDisplay().prefix(9))
+        // Shown: the pinned block (stable rail, capped at 9) plus the
+        // first nine unpinned items -- the exact ⌘1-9 targets from the
+        // QuickPick policy -- so every digit this menu advertises is
+        // present, still in pinned-first display order.
+        let display = store.sortedForDisplay()
+        let recent = Array(display.filter(\.pinned).prefix(9))
+            + Array(display.filter { !$0.pinned }.prefix(QuickPick.maxDigits))
         if recent.isEmpty {
             let empty = NSMenuItem(title: "  (no items yet)", action: nil, keyEquivalent: "")
             empty.isEnabled = false
             menu.addItem(empty)
         } else {
+            // Same QuickPick policy as the picker badge and its ⌘digit
+            // handler: digits go to unpinned rows only, so the ⌘N a menu
+            // row shows is always the ⌘N that pastes it.
+            let digits = QuickPick.labels(for: recent)
             for (i, item) in recent.enumerated() {
                 let label = "  " + (item.pinned ? "📌 " : "") + truncated(item.preview, to: 60)
                 let m = NSMenuItem(title: label,
                                    action: #selector(handleQuickPick(_:)),
-                                   keyEquivalent: i < 9 ? "\(i + 1)" : "")
+                                   keyEquivalent: digits[i].map { String($0) } ?? "")
                 m.keyEquivalentModifierMask = [.command]
                 m.target = self
                 m.representedObject = item.id
