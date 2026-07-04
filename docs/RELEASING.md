@@ -12,6 +12,9 @@ cd ~/code/multipaste
 make test                  # read the count AND the exit code
 make plaintext-smoke-test  # mirror script + shipped executor (--paste-smoke)
 make smoke-test            # screenshot pipeline
+make build                 # REQUIRED after a version bump: verify-app checks
+                           # the BUILT dist/Multipaste.app, not the source,
+                           # so a stale artifact fails the version check
 make verify-app            # universal + codesign + version consistency
 ```
 
@@ -144,6 +147,15 @@ needed). The whole checklist is drivable headlessly; recipe:
   com.rohin.multipaste plainTextPasteDefault -bool true`); the app reads
   UserDefaults on every access, so no relaunch is needed. `defaults
   delete` restores the registered default afterward.
+- **Menu-bar surface, headlessly** (proven for the v2.4.1 ⌘1-9 checks):
+  the status menu's real digit assignments are readable without a paste
+  via `value of attribute "AXMenuItemCmdChar" of menu item N` (System
+  Events, process "Multipaste"), which proves which rows carry ⌘1-9.
+  To PRESS a key equivalent, the click that opens the menu and the
+  key code must live in ONE osascript: the menu dismisses when the
+  script that opened it exits, so a keypress from a second script
+  lands nowhere (and the missing `pickAndPaste` log line is how you
+  catch that silent miss).
 
 ## 6. Rollback (if something is wrong after ship)
 
