@@ -35,7 +35,7 @@ Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
 **Latest release:** [v2.4.2](https://github.com/NewdlDewdl/multipaste/releases/latest)
 &nbsp;·&nbsp; **License:** [PolyForm Strict 1.0.0](LICENSE.md) (source-available, noncommercial)
-&nbsp;·&nbsp; **Tests:** 323 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
+&nbsp;·&nbsp; **Tests:** 326 unit tests &nbsp;·&nbsp; **Requires:** macOS 13 Ventura or later · **Universal** (Intel + Apple Silicon)
 
 ---
 
@@ -625,7 +625,7 @@ does not make network calls outside the once-a-day update check
   `PasteboardAugmenter`, `Preferences`, `ProcessTable`, `QuickPick`,
   `ReleaseNotesFormatter`, `ScreenshotDetector`, `SemanticVersion`,
   `SnippetMatcher`, `TabNavigation`, `UpdateChecker`, `Version`.
-  All testable. 323 unit tests live here (incl. `HistoryStore.pin(contentHash:)` for the v2.4.2 `--pin-current` CLI/IPC pin; QuickPick for the v2.4.1 recent-rail ⌘1–9 targeting; PlainText for the v2.4.0 paste-as-plain-text feature; MarkList + MultiPasteComposer for the v2.3.0 multi-paste feature; ScreenshotDetector for the screenshots-to-clipboard feature; PasteSynthesis + PasteRouting which lock the ⌘V device-bit and paste-path routing behind the v2.2.0 paste fix; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency + DocConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, version-string agreement across every artifact, and the README's stated test count / CLI-flag documentation against the live test registry).
+  All testable. 326 unit tests live here (incl. `HistoryStore.pin(contentHash:)` for the v2.4.2 `--pin-current` CLI/IPC pin; QuickPick for the v2.4.1 recent-rail ⌘1–9 targeting; PlainText for the v2.4.0 paste-as-plain-text feature; MarkList + MultiPasteComposer for the v2.3.0 multi-paste feature; ScreenshotDetector for the screenshots-to-clipboard feature; PasteSynthesis + PasteRouting which lock the ⌘V device-bit and paste-path routing behind the v2.2.0 paste fix; License + Contribution + LicensingMetadata + IssueChooser + ReadmePolish + VersionConsistency + DocConsistency suites that lock down LICENSE.md, CONTRIBUTING.md, SPDX/REUSE compliance, the GitHub issue-template chooser, SECURITY.md, the README hero design + stale-claim regression guards, version-string agreement across every artifact, and the README's stated test count / CLI-flag documentation against the live test registry).
 - **`Multipaste`** (executable, AppKit-bound):
   `AppDelegate`, `AppPaths`, `ClipboardMonitor`, `Diagnostics`,
   `HotKeyManager`, `HotkeyRecorderField`, `LoginAgent`, `LoginItem`,
@@ -662,7 +662,7 @@ v1.6.0 made the switch.
 ## Tests
 
 ```sh
-make test                    # runs all 323 unit tests in ~0.4 s
+make test                    # runs all 326 unit tests in ~0.4 s
 make smoke-test              # end-to-end integration test of the screenshot pipeline
 make plaintext-smoke-test    # plain-text paste on live pasteboards: mirror script + the SHIPPED executor (--paste-smoke)
 make preview-update-dialog   # visually preview the "vX.Y.Z is available" dialog
@@ -722,7 +722,7 @@ Coverage:
 | `IssueChooser`         | 8     | bug_report.yml is a YAML form with required fields (macOS version, Multipaste version, install method, arch, repro) + routes security to email; feature_request.yml has CLA acknowledgment including relicensing-clause callout; chooser config.yml disables blank issues + has security/commercial/Discussions/CONTRIBUTING contact links; old .md template removed; SECURITY.md exists at repo root + documents reporting channel + supported versions |
 | `ReadmePolish`         | 7     | Hero logo file exists at `Resources/icon-256.png` + has valid PNG magic bytes; README intro has centered `<p align="center">` hero with logo (192px width) + meaningful alt text + centered `<h1>Multipaste</h1>`; intro has a quick-nav row with ≥4 section anchors; intro has a bold Download CTA linking to `releases/latest`; **README does NOT contain stale build-duration claims** (case-insensitive scan for one-session / single-sitting variants, regression guard); **snippet-expansion section uses a generic `you@example.com` example** rather than the maintainer's personal address (regression guard); **every relative markdown link resolves on disk** (the dead-link guard: a `](file)` target that was renamed or removed, e.g. the bug-report link that pointed at a deleted `.md` template, now fails the build) |
 | `VersionConsistency`   | 8     | Version.swift's `MultipasteVersion.value` parses cleanly; Info.plist `CFBundleShortVersionString` agrees with Version.swift; README hero `Download vX.Y.Z` CTA matches; README install section references `Multipaste-X.Y.Z.dmg` matching the canonical version; **no stale `Multipaste-A.B.C.dmg` patterns anywhere in README** (the regression-guard that catches the bug class where Version.swift bumps but the README install link still points at the old DMG); CHANGELOG's latest `## X.Y.Z` entry matches; SECURITY.md supported-versions table mentions the current major series (e.g. `2.0.x`); (v2.4.2 hardening) **the README `**Latest release:** [vX.Y.Z]` prose line matches** (the exact line that lagged a release behind through v2.4.1 and v2.4.2 while every other guard stayed green) and **SECURITY.md's `(latest: X.Y.Z)` parenthetical matches** the canonical patch version |
-| `DocConsistency`       | 4     | (v2.4.2 hardening) makes README count/CLI drift impossible: every `N unit tests` claim **and** the coverage-table Total equal the LIVE `TestRegistry.cases.count` (not a hard-coded literal); the coverage rows **sum** to that Total (a new suite can't be added without itemizing it); and every hidden `Multipaste --flag` in `main.swift` (`--pin-current`, `--paste-smoke`) is documented in the README |
+| `DocConsistency`       | 7     | (v2.4.2 hardening) makes README count/CLI drift impossible: every `N unit tests` claim **and** the coverage-table Total equal the LIVE `TestRegistry.cases.count` (not a hard-coded literal); the coverage rows **sum** to that Total (a new suite can't be added without itemizing it); and every hidden `Multipaste --flag` in `main.swift` (`--pin-current`, `--paste-smoke`) is documented in the README; (doc-hardening II) **every coverage row's count matches the LIVE per-suite registered count** (`Suite/test` name prefixes tallied from the registry, so a row can't misstate one suite while the global total still balances), **every relative link in the canonical navigational docs** (SECURITY, CONTRIBUTING, the PR template, RELEASING, the roadmap) **resolves on disk** (the cross-doc dead-link guard, extending the README-only check to the whole doc set), and the Files-tree **`N tests across M suites`** line is pinned to the live case and suite counts |
 | `BuildScript`          | 4     | `scripts/build.sh` defaults to `ARCHS="${MULTIPASTE_BUILD_ARCHS:-arm64 x86_64}"` (so a fresh build is universal — **fixes the v2.0.0 Intel-can't-open bug**); script contains `lipo -create` step AND a `lipo -archs` post-build verification that fails the build if any requested arch is missing; the in-DMG `READ ME FIRST.txt` heredoc in `scripts/dmg.sh` uses **control-click / right-click → Open**, NOT just "double-click Multipaste" (fixes the v2.0.1 in-DMG-readme bug where users hit a Gatekeeper dialog with no Open button); the heredoc mentions System Settings → Privacy & Security as the macOS 15 Sequoia fallback |
 | `InfoPlist`            | 7     | CFBundleIdentifier in Info.plist matches Swift's `MultipasteVersion.bundleIdentifier` (drift breaks every TCC grant + Login Item + preference + launch agent — anything keyed by bundle ID); CFBundlePackageType is `APPL`; NSPrincipalClass is `NSApplication`; LSUIElement is true (menubar-only, no Dock icon); LSMinimumSystemVersion is `13.0`; NSAppleEventsUsageDescription present + non-empty + mentions Multipaste/paste; NSHumanReadableCopyright references PolyForm Strict + commercial-license email (Finder Get Info shows the right contact) |
 | `PasteSynthesis`       | 7     | ⌘V flag composition: the left-Command device bit (`NX_DEVICELCMDKEYMASK`, `0x8`) is OR'd into `commandVFlags` so Chromium/Electron honor the synthesized Command (Flycut #18); exact `0x10_0008` value; **regression guard that the flags never silently revert to bare `maskCommand`** (the v2.1.x paste-into-Electron bug) |
@@ -734,7 +734,7 @@ Coverage:
 | `PlainText`            | 22    | (v2.4.0) paste-as-plain-text policy: `string(for:)` per kind (text verbatim, RTF → stored plain not bytes, files → path text, image → nil); composer `textRepresentation` agrees with `PlainText.string` (locks the one-source-of-truth refactor); `pasteWrite(for:flavor:)` decision table: rich text → `.string`, rich RTF → `.richText(.rtf+.string)`, **plain RTF → `.string` with the `.rtf` type stripped** (the load-bearing guarantee), rich files → `.fileURLs` vs plain files → path `.string`, image → `.image` in both flavors (plain falls back so ⇧↩ still pastes the image); (review hardening) **empty-plain RTF falls back to the rich write** (the `.string("")` clipboard-clobber regression guard) + whitespace-only plain still pastes plain + empty text identical in both flavors; `PasteFlavor.effective` **pref × Shift decision table, all four combinations** (extracted from the picker so it's unit-testable); `PasteFlavor.hintKeyLegend` **pref-aware hint legend** (the picker's on-screen `↩`/`⇧↩` instruction always matches what the keys do) |
 | `Preferences` (plain-text paste default) | 2 | (v2.4.0) defaults OFF (⇧↩ is opt-in), off↔on round trip |
 | `QuickPick`            | 8     | (v2.4.1) ⌘1–9 digit policy: digits target the first nine UNPINNED rows in display order (pinned rows carry no digit), mixed/all-pinned/none-pinned lists, beyond-⌘9 unlabeled, out-of-range digits nil, filtered subsets renumber from ⌘1, and a **structural drift guard** (any row labeled ⌘N is exactly what `target(digit: N)` pastes, the invariant tying the picker badge, the ⌘digit handler, and the menu key equivalents together) |
-| **Total**              | **323**| Pure logic; UI is integration-tested manually          |
+| **Total**              | **326**| Pure logic; UI is integration-tested manually          |
 
 ---
 
@@ -766,7 +766,7 @@ Sources/
                           SnippetEngine  ThumbnailCache  UpdateService
                           WelcomeWindow  main.swift
 
-Tests/MultipasteCoreTests/   ← 323 tests across 27 suites, e.g.:
+Tests/MultipasteCoreTests/   ← 326 tests across 27 suites, e.g.:
   ClipboardItemTests  HistoryStoreTests  PlainTextTests
   QuickPickTests  MarkListTests  MultiPasteComposerTests
   PasteSynthesisTests  PasteRoutingTests  ScreenshotDetectorTests
@@ -799,7 +799,7 @@ scripts/
 ## Development
 
 ```sh
-make test          # run all 323 unit tests (~0.4 s)
+make test          # run all 326 unit tests (~0.4 s)
 make build         # produce dist/Multipaste.app (also generates icon)
 make run           # foreground-launch the bundled binary
 make install       # build + copy to ~/Applications + open
@@ -1062,5 +1062,5 @@ the ⌘digit handler, and the menu key equivalents alike. v2.4.2 added
 is on the clipboard right now by posting a distributed notification to the
 running app (so an external tool, like the bundled `clip-pin` helper, can
 copy AND pin in one step) without ever starting a second instance or
-clobbering `history.json`. 323 unit tests now.
+clobbering `history.json`. 326 unit tests now.
 Search before building. Test before shipping. Boil the ocean.
