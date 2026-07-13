@@ -143,6 +143,24 @@ public final class HistoryStore {
         notify()
     }
 
+    /// Idempotently PINS the item whose `contentHash` matches (sets
+    /// `pinned = true`; never toggles). Returns true if a matching item was
+    /// found. This is the store-side primitive behind the `--pin-current`
+    /// IPC ("pin whatever is on the clipboard now"): unlike `togglePin`, a
+    /// repeated external pin request can never accidentally UNPIN an item
+    /// that is already pinned. No-ops (and skips the save/notify) when the
+    /// item is already pinned, so re-pinning is free and non-disruptive.
+    @discardableResult
+    public func pin(contentHash: String) -> Bool {
+        guard let idx = items.firstIndex(where: { $0.contentHash == contentHash }) else { return false }
+        if !items[idx].pinned {
+            items[idx].pinned = true
+            save()
+            notify()
+        }
+        return true
+    }
+
     public func remove(id: UUID) {
         items.removeAll { $0.id == id }
         save()

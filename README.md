@@ -9,7 +9,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.4.1 (universal, Intel + Apple Silicon)</strong></a><br>
+  <a href="https://github.com/NewdlDewdl/multipaste/releases/latest"><strong>↓ Download v2.4.2 (universal, Intel + Apple Silicon)</strong></a><br>
   <a href="#install">Install</a> ·
   <a href="#keys">Keys</a> ·
   <a href="#paste-many-things-at-once">Multi-paste</a> ·
@@ -43,7 +43,7 @@ Silicon), runs at ~0% CPU and ~50 MB RAM when idle, starts at login.
 
 ### 🟢 Easy — drag and drop (no Terminal)
 
-1. Download **[Multipaste-2.4.1.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
+1. Download **[Multipaste-2.4.2.dmg](https://github.com/NewdlDewdl/multipaste/releases/latest)**
    from the latest release (universal DMG: runs on both Intel and Apple Silicon).
 2. Open the DMG. Drag **Multipaste** onto **Applications**.
 3. Open your Applications folder, **right-click Multipaste**, choose

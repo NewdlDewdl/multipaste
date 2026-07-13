@@ -80,6 +80,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         _ = picker
 
         monitor.start()
+
+        // Listen for the `--pin-current` IPC. A one-shot `Multipaste
+        // --pin-current` process posts this distributed notification; we
+        // own the store, so we perform the pin (see handlePinCurrentIPC).
+        DistributedNotificationCenter.default().addObserver(
+            self, selector: #selector(handlePinCurrentIPC(_:)),
+            name: MultipasteIPC.pinCurrent, object: nil)
+
         // The screenshot watcher writes to NSPasteboard.general; the
         // ClipboardMonitor (already started above) sees the changeCount
         // bump on its next 300ms tick and inserts the image into history
@@ -294,10 +302,30 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        DistributedNotificationCenter.default().removeObserver(self)
         monitor.stop()
         screenshotWatcher.stop()
         hotKeyManager.unregister()
         snippetEngine.stop()
+    }
+
+    /// Handle the `--pin-current` IPC: pin whatever is on the clipboard
+    /// right now. We rebuild the item from the LIVE pasteboard (same logic
+    /// as the poll) and `insert` it before pinning, so there is no race
+    /// with the 300 ms monitor tick: the current clipboard is guaranteed
+    /// present in the store and pinned regardless of poll timing. `insert`
+    /// is idempotent (dedup resurfaces an existing item, preserving its
+    /// trigger/pin); `pin(contentHash:)` then sets pinned = true without
+    /// ever toggling. Concealed/transient clips (password managers) snapshot
+    /// to nil and are silently skipped, so a password is never pinned.
+    @objc private func handlePinCurrentIPC(_ note: Notification) {
+        guard let item = monitor.currentSnapshot() else {
+            Diagnostics.log("pinCurrent: nothing pinnable on the clipboard (empty or concealed)")
+            return
+        }
+        store.insert(item)
+        let found = store.pin(contentHash: item.contentHash)
+        Diagnostics.log("pinCurrent: \(found ? "pinned" : "insert-then-miss") \(item.kindLabel) hash=\(item.contentHash)")
     }
 
     // MARK: - Helpers

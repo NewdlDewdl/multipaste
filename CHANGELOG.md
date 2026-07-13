@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.4.2 (2026-07-13)
+
+**`Multipaste --pin-current` pins whatever is on the clipboard right now,
+from the command line.**
+
+A hidden one-shot flag posts a distributed notification to the running app,
+which pins the current clipboard item through its real history store (dedup,
+persist, and picker refresh all happen the normal way). It never starts a
+second instance and never edits `history.json` behind the daemon's back, so
+there is nothing to clobber. Concealed/transient clips (password managers)
+are skipped, and re-running it on an already-pinned item is a no-op, never a
+toggle-off. This is what lets an external tool "put something on the
+clipboard AND pin it" in one step (see the `clip-pin` helper).
+
 ## 2.4.1 (2026-07-04)
 
 **`⌘1`-`⌘9` now quick-paste your RECENT items: digits skip the pinned

@@ -12,6 +12,11 @@ enum HistoryStoreTests {
         TestRegistry.register("HistoryStore/maxItemsEvictsOldestUnpinned", maxItemsEvictsOldestUnpinned)
         TestRegistry.register("HistoryStore/pinnedItemsSurviveEviction", pinnedItemsSurviveEviction)
         TestRegistry.register("HistoryStore/togglePinTogglesState", togglePinTogglesState)
+        TestRegistry.register("HistoryStore/pinByContentHashSetsPinned", pinByContentHashSetsPinned)
+        TestRegistry.register("HistoryStore/pinByContentHashReturnsFalseWhenNotFound", pinByContentHashReturnsFalseWhenNotFound)
+        TestRegistry.register("HistoryStore/pinByContentHashNeverUnpins", pinByContentHashNeverUnpins)
+        TestRegistry.register("HistoryStore/pinByContentHashIsPersisted", pinByContentHashIsPersisted)
+        TestRegistry.register("HistoryStore/pinByContentHashNotifiesObservers", pinByContentHashNotifiesObservers)
         TestRegistry.register("HistoryStore/removeItem", removeItem)
         TestRegistry.register("HistoryStore/clearKeepsPinned", clearKeepsPinned)
         TestRegistry.register("HistoryStore/clearAllDropsPinnedToo", clearAllDropsPinnedToo)
@@ -56,6 +61,62 @@ enum HistoryStoreTests {
         try expectEqual(store.items.count, 2)
         try expectEqual(store.items[0].preview, "second")
         try expectEqual(store.items[1].preview, "first")
+    }
+
+    // MARK: - pin(contentHash:)  (the --pin-current IPC primitive)
+
+    static func pinByContentHashSetsPinned() throws {
+        let (store, _) = makeStore()
+        let item = ClipboardItem.text("pin me")
+        store.insert(item)
+        try expect(!store.items[0].pinned, "precondition: freshly inserted item is unpinned")
+        let found = store.pin(contentHash: item.contentHash)
+        try expect(found, "pin should report it found the item")
+        try expect(store.items[0].pinned, "item must be pinned after pin(contentHash:)")
+    }
+
+    static func pinByContentHashReturnsFalseWhenNotFound() throws {
+        let (store, _) = makeStore()
+        store.insert(.text("something"))
+        let found = store.pin(contentHash: "text:deadbeef-nonexistent")
+        try expect(!found, "pinning an absent contentHash returns false")
+        try expect(!store.items[0].pinned, "no item should have changed pin state")
+    }
+
+    // The critical difference from togglePin: a REPEATED external pin request
+    // (e.g. re-running `--pin-current` on the same clip) must NOT unpin it.
+    static func pinByContentHashNeverUnpins() throws {
+        let (store, _) = makeStore()
+        let item = ClipboardItem.text("stay pinned")
+        store.insert(item)
+        try expect(store.pin(contentHash: item.contentHash), "first pin finds the item")
+        try expect(store.items[0].pinned, "pinned after first call")
+        // Idempotent: a second (and third) pin keeps it pinned, never toggles off.
+        _ = store.pin(contentHash: item.contentHash)
+        _ = store.pin(contentHash: item.contentHash)
+        try expect(store.items[0].pinned, "still pinned after repeated pin() calls (no toggle)")
+    }
+
+    static func pinByContentHashIsPersisted() throws {
+        let (store, dir) = makeStore()
+        let item = ClipboardItem.text("persist my pin")
+        store.insert(item)
+        _ = store.pin(contentHash: item.contentHash)
+        // Reload a fresh store from the same directory: the pin must survive.
+        let reloaded = HistoryStore(directory: dir, maxItems: 50)
+        let match = reloaded.items.first { $0.contentHash == item.contentHash }
+        try expect(match?.pinned == true, "pin must persist across store instances")
+    }
+
+    static func pinByContentHashNotifiesObservers() throws {
+        let (store, _) = makeStore()
+        let item = ClipboardItem.text("notify me")
+        store.insert(item)
+        var fired = false
+        store.subscribe { _ in fired = true }
+        fired = false   // ignore the insert's own notification
+        _ = store.pin(contentHash: item.contentHash)
+        try expect(fired, "pinning a not-yet-pinned item must notify observers (UI refresh)")
     }
 
     static func duplicateContentMovesToTopNotDuplicated() throws {

@@ -108,6 +108,13 @@ final class ClipboardMonitor {
         pasteboard.setString(string, forType: .string)
     }
 
+    /// Public entry point for the `--pin-current` IPC: build a
+    /// `ClipboardItem` from whatever is on the pasteboard RIGHT NOW, using
+    /// the exact same snapshot logic (and privacy-marker honoring) as the
+    /// live poll. Returns nil for concealed/transient clips or an empty
+    /// pasteboard, so an external pin request can never pin a password.
+    func currentSnapshot() -> ClipboardItem? { snapshot() }
+
     /// Read whatever's currently on the pasteboard and turn it into a
     /// `ClipboardItem`. Honors the community-standard NSPasteboard privacy
     /// markers used by password managers and transient generators.

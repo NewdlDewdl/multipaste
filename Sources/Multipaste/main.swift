@@ -12,6 +12,19 @@ if CommandLine.arguments.contains("--paste-smoke") {
     exit(PasteSmokeCheck.run())
 }
 
+// Hidden IPC: `Multipaste --pin-current` tells the ALREADY-RUNNING
+// Multipaste to pin whatever is currently on the clipboard, then exits
+// WITHOUT starting a second instance. Must run before Diagnostics /
+// SingleInstance (exactly like --paste-smoke) so it has no side effects on
+// the live daemon. The running app owns history.json in memory and rewrites
+// it on every copy, so routing through a DistributedNotification lets the
+// owner do the pin through its real store (dedup + persist + notify).
+if CommandLine.arguments.contains("--pin-current") {
+    DistributedNotificationCenter.default().postNotificationName(
+        MultipasteIPC.pinCurrent, object: nil, userInfo: nil, deliverImmediately: true)
+    exit(0)
+}
+
 // Log a one-line boot summary BEFORE anything else, so the err log gives
 // us visibility into the daemon's view of trust + cdhash + siblings.
 Diagnostics.logBoot()
