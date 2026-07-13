@@ -23,6 +23,7 @@ enum ContributionTests {
         TestRegistry.register("Contribution/contributingPermitsFutureRelicensing", contributingPermitsFutureRelicensing)
         TestRegistry.register("Contribution/contributingExplainsPolyFormStrictContext", contributingExplainsPolyFormStrictContext)
         TestRegistry.register("Contribution/prTemplateExistsAndReferencesCLA", prTemplateExistsAndReferencesCLA)
+        TestRegistry.register("Contribution/prTemplateHasNoStaleTestCount", prTemplateHasNoStaleTestCount)
     }
 
     // Package root is two directories above this test file.
@@ -109,6 +110,17 @@ enum ContributionTests {
                    "PR template should include checkboxes for CLA confirmation")
         try expect(text.contains("relicense"),
                    "PR template should call out the relicensing clause specifically (it's the unusual one)")
+    }
+
+    // The PR template used to hard-code "currently 100 tests", which
+    // silently drifted as the suite grew (100 → 315 → 321). It must not
+    // carry a bare "N tests" literal that can re-rot; the canonical count
+    // lives in the README, guarded against the live registry by
+    // DocConsistencyTests.
+    static func prTemplateHasNoStaleTestCount() throws {
+        let text = try read(".github/PULL_REQUEST_TEMPLATE.md")
+        try expect(text.range(of: #"[0-9]+ tests"#, options: .regularExpression) == nil,
+                   "PR template must not hard-code a \"N tests\" count (it drifts as the suite grows); reference the README's count instead")
     }
 
     // Bug-report and feature-request templates, the issue-chooser config,

@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+# clip-pin: put content on the macOS clipboard AND pin it in Multipaste.
+#
+# Whenever you'd reach for `pbcopy`, use `clip-pin` instead: it copies, then
+# tells the RUNNING Multipaste (com.rohin.multipaste) to pin the current
+# clipboard through its `--pin-current` IPC (v2.4.2+), and verifies the pin
+# actually landed in history.json before reporting success.
+#
+# Why an IPC and not a direct history.json edit: the running app owns that
+# file in memory and rewrites it on every copy, so an outside edit gets
+# clobbered. --pin-current routes through the app's real store (dedup +
+# persist + picker refresh). See ~/code/multipaste, reference_multipaste_app.
+#
+# Usage:
+#   clip-pin "some text"        copy the literal text, then pin it
+#   clip-pin < file             copy stdin, then pin it
+#   clip-pin -f FILE            copy FILE's bytes, then pin it
+#   clip-pin --current          don't copy; pin whatever is already on the clipboard
+#   clip-pin --no-verify ...    skip the history.json confirmation
+#   clip-pin -h | --help
+set -euo pipefail
+
+APP="/Applications/Multipaste.app"
+BIN="$APP/Contents/MacOS/Multipaste"
+HIST="$HOME/Library/Application Support/Multipaste/history.json"
+
+verify=1 mode=stdin text="" file=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --current)    mode=current ;;
+    --no-verify)  verify=0 ;;
+    -f|--file)    mode=file; file="${2:?clip-pin: -f needs a path}"; shift ;;
+    -h|--help)    sed -n '2,26p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+    -*)           echo "clip-pin: unknown flag $1 (see --help)" >&2; exit 2 ;;
+    *)            mode=text; text="$1" ;;
+  esac
+  shift
+done
+
+# 1. put content on the clipboard (unless pinning whatever is already there)
+case "$mode" in
+  text)    printf '%s' "$text" | pbcopy ;;
+  file)    [ -f "$file" ] || { echo "clip-pin: no such file: $file" >&2; exit 2; }; pbcopy < "$file" ;;
+  stdin)   pbcopy ;;
+  current) : ;;
+esac
+
+# 2. ensure Multipaste is running (launch + wait until up so its observer is
+#    registered before we post), then fire the pin IPC
+[ -x "$BIN" ] || { echo "clip-pin: Multipaste not installed at $APP" >&2; exit 3; }
+open -g -b com.rohin.multipaste 2>/dev/null || true
+for _ in $(seq 1 15); do pgrep -x Multipaste >/dev/null 2>&1 && break; python3 -c 'import time; time.sleep(0.2)'; done
+"$BIN" --pin-current
+
+# 3. verify the current clipboard's item is pinned in history.json.
+#    (Text clips are content-hash verifiable here; images/files hash
+#    differently so we skip strict verification for them.)
+if [ "$verify" = 1 ]; then
+  # Capture the clipboard to a temp file, NOT via $(pbpaste): command
+  # substitution strips trailing newlines, which would change the sha256
+  # and never match the app's hash (the app hashes the full pasteboard
+  # string, trailing newline and all). This exact trap made an early
+  # clip-pin report a false failure on a pin that had actually succeeded.
+  tmp="$(mktemp -t clip-pin)"
+  trap 'rm -f "$tmp"' EXIT
+  pbpaste > "$tmp" 2>/dev/null || true
+  if [ ! -s "$tmp" ]; then
+    echo "clip-pin: pin IPC sent (non-text or empty clipboard; not hash-verifying)"
+    exit 0
+  fi
+  hash="text:$(shasum -a256 "$tmp" | awk '{print $1}')"
+  for _ in $(seq 1 20); do   # poll up to ~4s for the async distributed notification
+    if python3 - "$HIST" "$hash" >/dev/null 2>&1 <<'PY'
+import json, sys
+try:
+    data = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(1)
+sys.exit(0 if any(i.get("contentHash") == sys.argv[2] and i.get("pinned") is True for i in data) else 1)
+PY
+    then echo "clip-pin: copied and pinned ✓ ($hash)"; exit 0; fi
+    python3 -c 'import time; time.sleep(0.2)'
+  done
+  echo "clip-pin: WARNING, copied and IPC sent, but could not confirm the pin in history.json" >&2
+  exit 4
+fi
+echo "clip-pin: copied and pin IPC sent (verify skipped)"

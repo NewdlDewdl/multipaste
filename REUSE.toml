@@ -28,7 +28,7 @@ SPDX-License-Identifier  = "LicenseRef-PolyForm-Strict-1.0.0"
 
 # Build / packaging scripts.
 [[annotations]]
-path                     = ["scripts/*.sh", "scripts/*.swift", "Makefile"]
+path                     = ["scripts/*.sh", "scripts/*.swift", "scripts/clip-pin", "Makefile"]
 precedence               = "aggregate"
 SPDX-FileCopyrightText   = "Copyright (c) 2026 Rohin Agrawal"
 SPDX-License-Identifier  = "LicenseRef-PolyForm-Strict-1.0.0"

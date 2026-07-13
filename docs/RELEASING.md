@@ -18,6 +18,22 @@ make build                 # REQUIRED after a version bump: verify-app checks
 make verify-app            # universal + codesign + version consistency
 ```
 
+**Hidden CLI flags (documented so a new one never ships unnoticed).**
+`main.swift` handles two one-shot flags that run and exit without starting
+the menu-bar app. A `DocConsistency` test fails if either is left
+undocumented in the README:
+
+- `Multipaste --paste-smoke` runs the real `Paster.put` executor against a
+  private pasteboard (wired into `make plaintext-smoke-test`).
+- `Multipaste --pin-current` posts `MultipasteIPC.pinCurrent`; the running
+  daemon pins the current clipboard item through its real `HistoryStore`
+  (skips concealed/transient clips, no-ops on an already-pinned item, and
+  never spawns a second instance). Verify it live: `printf test | pbcopy;
+  Multipaste --pin-current`, then confirm `"pinned": true` for that item in
+  `~/Library/Application Support/Multipaste/history.json`. The bundled
+  `scripts/clip-pin` helper does the copy, the pin, and the verify in one
+  step.
+
 Version consistency is test-enforced (`VersionConsistency` suite):
 `Version.swift`, `Info.plist` (`CFBundleShortVersionString` AND a bumped
 `CFBundleVersion`), README hero `Download vX.Y.Z` + `Multipaste-X.Y.Z.dmg`,

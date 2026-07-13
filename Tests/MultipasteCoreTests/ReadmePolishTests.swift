@@ -31,6 +31,7 @@ enum ReadmePolishTests {
         TestRegistry.register("ReadmePolish/readmeHasDownloadCallToAction", readmeHasDownloadCallToAction)
         TestRegistry.register("ReadmePolish/readmeDoesNotClaimBuiltInOneSession", readmeDoesNotClaimBuiltInOneSession)
         TestRegistry.register("ReadmePolish/snippetExampleUsesGenericEmail", snippetExampleUsesGenericEmail)
+        TestRegistry.register("ReadmePolish/readmeRelativeLinksResolve", readmeRelativeLinksResolve)
     }
 
     private static var packageRoot: URL {
@@ -52,6 +53,38 @@ enum ReadmePolishTests {
 
     private static func intro(of text: String, lines: Int = 30) -> String {
         text.components(separatedBy: "\n").prefix(lines).joined(separator: "\n")
+    }
+
+    // ----- Every relative markdown link resolves on disk -----
+
+    // The dead-link class this guards: the README linked its bug-report
+    // template to `.github/ISSUE_TEMPLATE/bug_report.md` after that file was
+    // replaced by a YAML form, so the front-page link 404'd and no test
+    // noticed. Extracts every `](target)` that isn't an http(s)/mailto URL
+    // or a pure `#anchor` and asserts the file exists.
+    static func readmeRelativeLinksResolve() throws {
+        let readme = try readReadme()
+        var missing: [String] = []
+        var search = readme.startIndex..<readme.endIndex
+        let pattern = #"\]\(([^)]+)\)"#
+        while let r = readme.range(of: pattern, options: .regularExpression, range: search) {
+            search = r.upperBound..<readme.endIndex
+            // Skip a `](target)` fragment fully enclosed in inline-code
+            // backticks: that's prose ABOUT link syntax (e.g. this guard's
+            // own coverage-table row), not a rendered link.
+            let before = r.lowerBound > readme.startIndex ? readme[readme.index(before: r.lowerBound)] : " "
+            let after = r.upperBound < readme.endIndex ? readme[r.upperBound] : " "
+            if before == "`" && after == "`" { continue }
+            var target = String(String(readme[r]).dropFirst(2).dropLast())   // strip `](` and `)`
+            if target.hasPrefix("http") || target.hasPrefix("mailto:") { continue }
+            if let hash = target.firstIndex(of: "#") { target = String(target[..<hash]) }
+            target = target.trimmingCharacters(in: .whitespaces)
+            if target.isEmpty { continue }                                   // pure #anchor
+            let url = packageRoot.appendingPathComponent(target)
+            if !FileManager.default.fileExists(atPath: url.path) { missing.append(target) }
+        }
+        try expect(missing.isEmpty,
+                   "README links to file(s) that don't exist on disk: \(missing.joined(separator: ", "))")
     }
 
     // ----- 1. Logo file exists -----

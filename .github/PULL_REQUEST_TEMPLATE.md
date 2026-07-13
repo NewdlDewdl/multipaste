@@ -12,7 +12,7 @@
 
 ## Testing
 
-- [ ] `make test` passes locally (currently 100 tests; this PR adds N new tests / doesn't change test count).
+- [ ] `make test` passes locally (all green, exit 0), and the README's stated test count is updated if this PR adds or removes tests.
 - [ ] Manual testing steps below if UI or system behavior changed.
 
 <!--

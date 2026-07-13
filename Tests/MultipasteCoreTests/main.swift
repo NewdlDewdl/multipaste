@@ -27,6 +27,7 @@ LicensingMetadataTests.registerAll()
 IssueChooserTests.registerAll()
 ReadmePolishTests.registerAll()
 VersionConsistencyTests.registerAll()
+DocConsistencyTests.registerAll()
 BuildScriptTests.registerAll()
 InfoPlistTests.registerAll()
 

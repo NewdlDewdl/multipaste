@@ -9,7 +9,7 @@ reports seriously and want them to land somewhere I'll see them quickly.
 
 | Version  | Supported              |
 | -------- | ---------------------- |
-| `2.4.x`  | ✅ current release (latest: 2.4.1) |
+| `2.4.x`  | ✅ current release (latest: 2.4.2) |
 | `2.3.x`  | ⚠️ best-effort         |
 | `2.2.x`  | ⚠️ best-effort         |
 | `2.1.x`  | ⚠️ best-effort         |
@@ -75,6 +75,13 @@ In scope:
   Multipaste processes.
 - Supply-chain issues with the release DMG, codesign requirements,
   or update-check path.
+- Abuse of the `--pin-current` inter-process channel. `Multipaste
+  --pin-current` posts a `DistributedNotification`
+  (`MultipasteIPC.pinCurrent`) that the running app observes to pin the
+  item currently on the clipboard. Any local process can post that
+  notification, so a bug that let it do more than pin an
+  already-present clip (inject content, read history, unpin an item, or
+  bypass the `org.nspasteboard.org` concealed-clip skip) is in scope.
 
 Out of scope:
 

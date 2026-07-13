@@ -34,6 +34,8 @@ enum VersionConsistencyTests {
         TestRegistry.register("VersionConsistency/readmeContainsNoStaleDMGReferences", readmeContainsNoStaleDMGReferences)
         TestRegistry.register("VersionConsistency/changelogLatestEntryMatchesVersion", changelogLatestEntryMatchesVersion)
         TestRegistry.register("VersionConsistency/securityPolicySupportsCurrentMajorSeries", securityPolicySupportsCurrentMajorSeries)
+        TestRegistry.register("VersionConsistency/readmeLatestReleaseLineMatchesVersion", readmeLatestReleaseLineMatchesVersion)
+        TestRegistry.register("VersionConsistency/securityLatestParentheticalMatchesVersion", securityLatestParentheticalMatchesVersion)
     }
 
     private static var packageRoot: URL {
@@ -182,5 +184,44 @@ enum VersionConsistencyTests {
         // series (e.g., "2.0.x") as supported.
         try expect(security.contains("\(major).x"),
                    "SECURITY.md supported-versions table should mention \(major).x as supported (current major series)")
+    }
+
+    // ----- 7. README "Latest release: vX.Y.Z" line -----
+
+    // The exact line that rotted through v2.4.1 and v2.4.2: the hero CTA and
+    // the DMG filename were bumped (guarded above), but the prose
+    // "**Latest release:** [v2.4.1]" line was not, so it lagged a release
+    // behind while every guard stayed green.
+    static func readmeLatestReleaseLineMatchesVersion() throws {
+        let version = try canonicalVersion()
+        let readme = try read("README.md")
+        guard let range = readme.range(of: #"\*\*Latest release:\*\* \[v[0-9]+\.[0-9]+\.[0-9]+\]"#,
+                                       options: .regularExpression) else {
+            throw TestFailure(
+                message: "README has no `**Latest release:** [vX.Y.Z]` line to check",
+                file: #file, line: #line)
+        }
+        let found = String(readme[range])
+        try expect(found.contains("[v\(version)]"),
+                   "README \"\(found)\" must reference the canonical version v\(version)")
+    }
+
+    // ----- 8. SECURITY.md "(latest: X.Y.Z)" parenthetical -----
+
+    // securityPolicySupportsCurrentMajorSeries only checks the "2.4.x" major
+    // series is present, so the "(latest: 2.4.1)" parenthetical drifted a
+    // patch behind. This pins the exact patch version.
+    static func securityLatestParentheticalMatchesVersion() throws {
+        let version = try canonicalVersion()
+        let security = try read("SECURITY.md")
+        guard let range = security.range(of: #"latest: [0-9]+\.[0-9]+\.[0-9]+"#,
+                                         options: .regularExpression) else {
+            throw TestFailure(
+                message: "SECURITY.md has no `latest: X.Y.Z` parenthetical to check",
+                file: #file, line: #line)
+        }
+        let found = String(security[range])
+        try expectEqual(found, "latest: \(version)",
+                        "SECURITY.md \"(\(found))\" must name the canonical version \(version)")
     }
 }
